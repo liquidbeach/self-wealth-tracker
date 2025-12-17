@@ -38,23 +38,22 @@ export default async function PortfolioPage() {
         <div className="card">
           <p className="text-sm text-slate-500 mb-1">Cash (AUD)</p>
           <p className="text-xl font-bold text-slate-900">
-            ${cashBalances?.filter(c => c.currency === 'AUD').reduce((sum, c) => sum + Number(c.balance), 0).toLocaleString('en-AU', { minimumFractionDigits: 2 }) || '0.00'}
+            ${cashBalances?.filter((c: any) => c.currency === 'AUD').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-AU', { minimumFractionDigits: 2 }) || '0.00'}
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500 mb-1">Cash (USD)</p>
           <p className="text-xl font-bold text-slate-900">
-            ${cashBalances?.filter(c => c.currency === 'USD').reduce((sum, c) => sum + Number(c.balance), 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+            ${cashBalances?.filter((c: any) => c.currency === 'USD').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500 mb-1">Cash (INR)</p>
           <p className="text-xl font-bold text-slate-900">
-            ₹{cashBalances?.filter(c => c.currency === 'INR').reduce((sum, c) => sum + Number(c.balance), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
+            ₹{cashBalances?.filter((c: any) => c.currency === 'INR').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
           </p>
         </div>
       </div>
-
       {/* Holdings table */}
       <div className="card">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Holdings</h3>
