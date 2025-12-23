@@ -34,6 +34,7 @@ export default async function PortfolioPage() {
       </div>
 
       {/* Cash balances */}
+      {/* Cash balances */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
           <p className="text-sm text-slate-500 mb-1">Cash (AUD)</p>
