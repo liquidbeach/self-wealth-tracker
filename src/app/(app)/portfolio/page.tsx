@@ -194,6 +194,20 @@ export default function PortfolioPage() {
     return acc
   }, {} as Record<string, Holding[]>)
 
+  // Define column widths for consistent alignment
+  const colWidths = {
+    expand: 'w-10',
+    holding: 'w-[220px]',
+    type: 'w-[100px]',
+    firstBuy: 'w-[120px]',
+    units: 'w-[100px]',
+    avgPrice: 'w-[100px]',
+    current: 'w-[100px]',
+    value: 'w-[120px]',
+    gainLoss: 'w-[100px]',
+    actions: 'w-[80px]'
+  }
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -340,19 +354,19 @@ export default function PortfolioPage() {
                    '🇮🇳 Indian (INR)'}
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
                     <thead>
                       <tr className="border-b border-slate-200">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 w-8"></th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Holding</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Type</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">First Buy</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Avg Price</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Current</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Value</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Gain/Loss</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500 w-20">Actions</th>
+                        <th className={`${colWidths.expand} text-left py-3 px-2`}></th>
+                        <th className={`${colWidths.holding} text-left py-3 px-2 text-sm font-medium text-slate-500`}>Holding</th>
+                        <th className={`${colWidths.type} text-left py-3 px-2 text-sm font-medium text-slate-500`}>Type</th>
+                        <th className={`${colWidths.firstBuy} text-left py-3 px-2 text-sm font-medium text-slate-500`}>First Buy</th>
+                        <th className={`${colWidths.units} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Units</th>
+                        <th className={`${colWidths.avgPrice} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Avg Price</th>
+                        <th className={`${colWidths.current} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Current</th>
+                        <th className={`${colWidths.value} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Value</th>
+                        <th className={`${colWidths.gainLoss} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Gain/Loss</th>
+                        <th className={`${colWidths.actions} text-right py-3 px-2`}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -369,68 +383,50 @@ export default function PortfolioPage() {
                               className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                               onClick={() => lots.length > 0 && toggleExpanded(holding.id)}
                             >
-                              <td className="py-3 px-4">
+                              <td className={`${colWidths.expand} py-3 px-2`}>
                                 {lots.length > 0 && (
                                   isExpanded ? 
                                     <ChevronDown className="w-4 h-4 text-slate-400" /> : 
                                     <ChevronRight className="w-4 h-4 text-slate-400" />
                                 )}
                               </td>
-                              <td className="py-3 px-4">
+                              <td className={`${colWidths.holding} py-3 px-2`}>
                                 <div>
                                   <p className="font-medium text-slate-900">{holding.ticker}</p>
-                                  <p className="text-sm text-slate-500">{holding.name}</p>
+                                  <p className="text-sm text-slate-500 truncate">{holding.name}</p>
                                 </div>
                               </td>
-                              <td className="py-3 px-4">
+                              <td className={`${colWidths.type} py-3 px-2`}>
                                 <span className="text-sm text-slate-600">{holding.asset_type}</span>
-                                {holding.investment_style && (
-                                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                                    holding.investment_style === 'Growth' ? 'bg-purple-100 text-purple-700' :
-                                    holding.investment_style === 'Dividend' ? 'bg-green-100 text-green-700' :
-                                    'bg-slate-100 text-slate-600'
-                                  }`}>
-                                    {holding.investment_style}
-                                  </span>
-                                )}
                               </td>
-                              <td className="py-3 px-4 text-sm text-slate-600">
+                              <td className={`${colWidths.firstBuy} py-3 px-2 text-sm text-slate-600`}>
                                 {stats.firstBuyDate ? formatDate(stats.firstBuyDate) : '-'}
                               </td>
-                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                              <td className={`${colWidths.units} py-3 px-2 text-sm text-slate-900 text-right`}>
                                 {stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                                 {lots.length > 1 && (
                                   <span className="text-slate-400 text-xs ml-1">({lots.length})</span>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                              <td className={`${colWidths.avgPrice} py-3 px-2 text-sm text-slate-900 text-right`}>
                                 {formatCurrency(stats.avgPrice, currency)}
                               </td>
-                              <td className="py-3 px-4 text-sm text-right">
+                              <td className={`${colWidths.current} py-3 px-2 text-sm text-right`}>
                                 <span className={hasLivePrice ? 'text-slate-900' : 'text-slate-400'}>
                                   {formatCurrency(stats.currentPrice, currency)}
                                 </span>
-                                {!hasLivePrice && (
-                                  <span className="text-xs text-slate-400 block">avg</span>
-                                )}
                               </td>
-                              <td className="py-3 px-4 text-sm text-slate-900 text-right font-medium">
+                              <td className={`${colWidths.value} py-3 px-2 text-sm text-slate-900 text-right font-medium`}>
                                 {formatCurrency(stats.currentValue, currency)}
                               </td>
-                              <td className={`py-3 px-4 text-sm text-right font-medium ${
+                              <td className={`${colWidths.gainLoss} py-3 px-2 text-sm text-right font-medium ${
                                 stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'
                               }`}>
                                 {stats.totalCost > 0 ? (
-                                  <>
-                                    {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(2)}%
-                                    <br />
-                                    <span className="text-xs font-normal">
-                                      {stats.gainLoss >= 0 ? '+' : ''}{formatCurrency(stats.gainLoss, currency)}
-                                    </span>
-                                  </>
+                                  `${stats.gainLoss >= 0 ? '+' : ''}${stats.gainLossPct.toFixed(1)}%`
                                 ) : '-'}
                               </td>
-                              <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <td className={`${colWidths.actions} py-3 px-2 text-right`} onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleAddLot(holding)}
@@ -452,19 +448,18 @@ export default function PortfolioPage() {
                             {/* Expanded lots */}
                             {isExpanded && lots.length > 0 && (
                               <tr key={`${holding.id}-lots`}>
-                                <td colSpan={10} className="bg-slate-50 px-4 py-3">
-                                  <div className="ml-8">
+                                <td colSpan={10} className="bg-slate-50 px-2 py-3">
+                                  <div className="ml-10">
                                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">Purchase Lots</p>
-                                    <table className="w-full">
+                                    <table className="w-full table-fixed">
                                       <thead>
                                         <tr className="text-xs text-slate-500">
-                                          <th className="text-left py-1 pr-4">Date</th>
-                                          <th className="text-right py-1 pr-4">Units</th>
-                                          <th className="text-right py-1 pr-4">Price</th>
-                                          <th className="text-right py-1 pr-4">Cost</th>
-                                          <th className="text-right py-1 pr-4">Gain/Loss</th>
-                                          <th className="text-left py-1 pr-4">Notes</th>
-                                          <th className="w-8"></th>
+                                          <th className="w-[120px] text-left py-1 px-2">Date</th>
+                                          <th className="w-[100px] text-right py-1 px-2">Units</th>
+                                          <th className="w-[100px] text-right py-1 px-2">Price</th>
+                                          <th className="w-[120px] text-right py-1 px-2">Cost</th>
+                                          <th className="w-[100px] text-right py-1 px-2">Gain/Loss</th>
+                                          <th className="w-[50px] text-right py-1 px-2"></th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -476,31 +471,26 @@ export default function PortfolioPage() {
 
                                           return (
                                             <tr key={lot.id} className="text-sm border-t border-slate-200">
-                                              <td className="py-2 pr-4 text-slate-600">
+                                              <td className="w-[120px] py-2 px-2 text-slate-600">
                                                 {formatDate(lot.purchase_date)}
                                               </td>
-                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                              <td className="w-[100px] py-2 px-2 text-right text-slate-900">
                                                 {Number(lot.units).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                                               </td>
-                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                              <td className="w-[100px] py-2 px-2 text-right text-slate-900">
                                                 {formatCurrency(Number(lot.purchase_price), currency)}
                                               </td>
-                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                              <td className="w-[120px] py-2 px-2 text-right text-slate-900">
                                                 {formatCurrency(lotCost, currency)}
                                               </td>
-                                              <td className={`py-2 pr-4 text-right font-medium ${
+                                              <td className={`w-[100px] py-2 px-2 text-right font-medium ${
                                                 lotGain >= 0 ? 'text-green-600' : 'text-red-600'
                                               }`}>
                                                 {hasLivePrice ? (
-                                                  <>
-                                                    {lotGain >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
-                                                  </>
+                                                  `${lotGain >= 0 ? '+' : ''}${lotGainPct.toFixed(1)}%`
                                                 ) : '-'}
                                               </td>
-                                              <td className="py-2 pr-4 text-slate-500 text-sm">
-                                                {lot.notes || '-'}
-                                              </td>
-                                              <td className="py-2">
+                                              <td className="w-[50px] py-2 px-2 text-right">
                                                 <button
                                                   onClick={() => handleDeleteLot(lot.id)}
                                                   className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
