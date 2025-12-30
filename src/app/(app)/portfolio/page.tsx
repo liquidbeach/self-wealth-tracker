@@ -1,23 +1,171 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { Plus, Briefcase } from 'lucide-react'
-import Link from 'next/link'
+'use client'
 
-export default async function PortfolioPage() {
-  const supabase = createServerSupabaseClient()
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase'
+import { 
+  Plus, 
+  Briefcase, 
+  ChevronDown, 
+  ChevronRight, 
+  Edit2, 
+  Trash2,
+  Upload,
+  Wallet,
+  MoreHorizontal
+} from 'lucide-react'
+import AddHoldingModal from '@/components/AddHoldingModal'
+import AddLotModal from '@/components/AddLotModal'
+import EditHoldingModal from '@/components/EditHoldingModal'
+import CashBalanceModal from '@/components/CashBalanceModal'
+import ImportDataModal from '@/components/ImportDataModal'
+
+interface Lot {
+  id: string
+  units: number
+  purchase_date: string
+  purchase_price: number
+  notes: string | null
+}
+
+interface Holding {
+  id: string
+  ticker: string
+  name: string
+  market: string
+  currency: string
+  asset_type: string
+  sector: string | null
+  investment_style: string | null
+  current_price: number | null
+  notes: string | null
+  thesis: string | null
+  lots: Lot[]
+}
+
+interface CashBalance {
+  id: string
+  account_name: string
+  currency: string
+  balance: number
+}
+
+export default function PortfolioPage() {
+  const [holdings, setHoldings] = useState<Holding[]>([])
+  const [cashBalances, setCashBalances] = useState<CashBalance[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedHoldings, setExpandedHoldings] = useState<Set<string>>(new Set())
   
-  // Get user's holdings with lots
-  const { data: holdings } = await supabase
-    .from('holdings')
-    .select(`
-      *,
-      lots (*)
-    `)
-    .order('created_at', { ascending: false })
+  // Modal states
+  const [showAddHolding, setShowAddHolding] = useState(false)
+  const [showAddLot, setShowAddLot] = useState(false)
+  const [showEditHolding, setShowEditHolding] = useState(false)
+  const [showCashBalance, setShowCashBalance] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null)
+  const [showMenu, setShowMenu] = useState(false)
 
-  // Get cash balances
-  const { data: cashBalances } = await supabase
-    .from('cash_balances')
-    .select('*')
+  const loadData = useCallback(async () => {
+    const supabase = createClient()
+    
+    // Load holdings with lots
+    const { data: holdingsData } = await supabase
+      .from('holdings')
+      .select(`
+        *,
+        lots (*)
+      `)
+      .order('ticker', { ascending: true })
+
+    // Load cash balances
+    const { data: cashData } = await supabase
+      .from('cash_balances')
+      .select('*')
+      .order('currency', { ascending: true })
+
+    setHoldings(holdingsData || [])
+    setCashBalances(cashData || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const toggleExpanded = (holdingId: string) => {
+    const newExpanded = new Set(expandedHoldings)
+    if (newExpanded.has(holdingId)) {
+      newExpanded.delete(holdingId)
+    } else {
+      newExpanded.add(holdingId)
+    }
+    setExpandedHoldings(newExpanded)
+  }
+
+  const handleAddLot = (holding: Holding) => {
+    setSelectedHolding(holding)
+    setShowAddLot(true)
+  }
+
+  const handleEditHolding = (holding: Holding) => {
+    setSelectedHolding(holding)
+    setShowEditHolding(true)
+  }
+
+  const handleDeleteLot = async (lotId: string) => {
+    if (!confirm('Delete this lot?')) return
+    
+    const supabase = createClient()
+    await supabase.from('lots').delete().eq('id', lotId)
+    loadData()
+  }
+
+  // Calculate totals
+  const getCashByCurrency = (currency: string): number => {
+    return cashBalances
+      .filter(c => c.currency === currency)
+      .reduce((sum, c) => sum + Number(c.balance), 0)
+  }
+
+  const calculateHoldingStats = (holding: Holding) => {
+    const lots = holding.lots || []
+    const totalUnits = lots.reduce((sum, lot) => sum + Number(lot.units), 0)
+    const totalCost = lots.reduce((sum, lot) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0)
+    const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
+    const currentValue = totalUnits * (holding.current_price || avgPrice)
+    const gainLoss = currentValue - totalCost
+    const gainLossPct = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0
+    const firstBuyDate = lots.length > 0 
+      ? lots.reduce((earliest, lot) => lot.purchase_date < earliest ? lot.purchase_date : earliest, lots[0].purchase_date)
+      : null
+
+    return { totalUnits, totalCost, avgPrice, currentValue, gainLoss, gainLossPct, firstBuyDate }
+  }
+
+  const getCurrencySymbol = (currency: string) => {
+    if (currency === 'INR') return '₹'
+    return '$'
+  }
+
+  const formatCurrency = (value: number, currency: string) => {
+    const symbol = getCurrencySymbol(currency)
+    return `${symbol}${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-AU', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    })
+  }
+
+  // Group holdings by currency
+  const holdingsByCurrency = holdings.reduce((acc, holding) => {
+    const currency = holding.currency
+    if (!acc[currency]) acc[currency] = []
+    acc[currency].push(holding)
+    return acc
+  }, {} as Record<string, Holding[]>)
 
   return (
     <div className="space-y-6">
@@ -27,95 +175,347 @@ export default async function PortfolioPage() {
           <h1 className="text-2xl font-bold text-slate-900">Portfolio</h1>
           <p className="text-slate-500">Track your holdings and performance</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Holding
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button 
+              onClick={() => setShowMenu(!showMenu)}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false)
+                      setShowCashBalance(true)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    Manage Cash
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false)
+                      setShowImport(true)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import Data
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <button 
+            onClick={() => setShowAddHolding(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Holding
+          </button>
+        </div>
       </div>
 
       {/* Cash balances */}
-      {/* Cash balances */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card">
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
           <p className="text-sm text-slate-500 mb-1">Cash (AUD)</p>
           <p className="text-xl font-bold text-slate-900">
-            ${cashBalances?.filter((c: any) => c.currency === 'AUD').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-AU', { minimumFractionDigits: 2 }) || '0.00'}
+            ${getCashByCurrency('AUD').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="card">
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
           <p className="text-sm text-slate-500 mb-1">Cash (USD)</p>
           <p className="text-xl font-bold text-slate-900">
-            ${cashBalances?.filter((c: any) => c.currency === 'USD').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+            ${getCashByCurrency('USD').toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="card">
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
           <p className="text-sm text-slate-500 mb-1">Cash (INR)</p>
           <p className="text-xl font-bold text-slate-900">
-            ₹{cashBalances?.filter((c: any) => c.currency === 'INR').reduce((sum: number, c: any) => sum + Number(c.balance), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
+            ₹{getCashByCurrency('INR').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </p>
         </div>
       </div>
-      {/* Holdings table */}
+
+      {/* Holdings */}
       <div className="card">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Holdings</h3>
         
-        {holdings && holdings.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Holding</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Market</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Type</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Avg Price</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Current</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Gain/Loss</th>
-                </tr>
-              </thead>
-              <tbody>
-                {holdings.map((holding) => {
-                  const totalUnits = holding.lots?.reduce((sum: number, lot: any) => sum + Number(lot.units), 0) || 0
-                  const totalCost = holding.lots?.reduce((sum: number, lot: any) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0) || 0
-                  const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
-                  const currentValue = totalUnits * (holding.current_price || 0)
-                  const gainLoss = currentValue - totalCost
-                  const gainLossPct = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0
+        {loading ? (
+          <div className="text-center py-12 text-slate-400">
+            Loading...
+          </div>
+        ) : holdings.length > 0 ? (
+          <div className="space-y-6">
+            {Object.entries(holdingsByCurrency).map(([currency, currencyHoldings]) => (
+              <div key={currency}>
+                <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">
+                  {currency === 'AUD' ? '🇦🇺 Australian (AUD)' : 
+                   currency === 'USD' ? '🇺🇸 US (USD)' : 
+                   '🇮🇳 Indian (INR)'}
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 w-8"></th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Holding</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Type</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">First Buy</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Avg Price</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Current</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Gain/Loss</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500 w-20">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currencyHoldings.map((holding) => {
+                        const stats = calculateHoldingStats(holding)
+                        const isExpanded = expandedHoldings.has(holding.id)
+                        const lots = holding.lots || []
 
-                  return (
-                    <tr key={holding.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium text-slate-900">{holding.ticker}</p>
-                          <p className="text-sm text-slate-500">{holding.name}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{holding.market}</td>
-                      <td className="py-3 px-4 text-sm text-slate-600">{holding.asset_type}</td>
-                      <td className="py-3 px-4 text-sm text-slate-900 text-right">{totalUnits.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-slate-900 text-right">${avgPrice.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-slate-900 text-right">${holding.current_price?.toFixed(2) || '-'}</td>
-                      <td className={`py-3 px-4 text-sm text-right font-medium ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {gainLoss >= 0 ? '+' : ''}{gainLossPct.toFixed(2)}%
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        return (
+                          <>
+                            <tr 
+                              key={holding.id} 
+                              className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                              onClick={() => lots.length > 0 && toggleExpanded(holding.id)}
+                            >
+                              <td className="py-3 px-4">
+                                {lots.length > 0 && (
+                                  isExpanded ? 
+                                    <ChevronDown className="w-4 h-4 text-slate-400" /> : 
+                                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div>
+                                  <p className="font-medium text-slate-900">{holding.ticker}</p>
+                                  <p className="text-sm text-slate-500">{holding.name}</p>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-slate-600">{holding.asset_type}</span>
+                                {holding.investment_style && (
+                                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                                    holding.investment_style === 'Growth' ? 'bg-purple-100 text-purple-700' :
+                                    holding.investment_style === 'Dividend' ? 'bg-green-100 text-green-700' :
+                                    'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {holding.investment_style}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-600">
+                                {stats.firstBuyDate ? formatDate(stats.firstBuyDate) : '-'}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                                {stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                {lots.length > 1 && (
+                                  <span className="text-slate-400 text-xs ml-1">({lots.length})</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                                {formatCurrency(stats.avgPrice, currency)}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                                {holding.current_price 
+                                  ? formatCurrency(holding.current_price, currency)
+                                  : '-'
+                                }
+                              </td>
+                              <td className={`py-3 px-4 text-sm text-right font-medium ${
+                                stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {stats.totalCost > 0 ? (
+                                  <>
+                                    {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(2)}%
+                                    <br />
+                                    <span className="text-xs font-normal">
+                                      {stats.gainLoss >= 0 ? '+' : ''}{formatCurrency(stats.gainLoss, currency)}
+                                    </span>
+                                  </>
+                                ) : '-'}
+                              </td>
+                              <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => handleAddLot(holding)}
+                                    className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded"
+                                    title="Add lot"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditHolding(holding)}
+                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {/* Expanded lots */}
+                            {isExpanded && lots.length > 0 && (
+                              <tr key={`${holding.id}-lots`}>
+                                <td colSpan={9} className="bg-slate-50 px-4 py-3">
+                                  <div className="ml-8">
+                                    <p className="text-xs font-medium text-slate-500 uppercase mb-2">Purchase Lots</p>
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr className="text-xs text-slate-500">
+                                          <th className="text-left py-1 pr-4">Date</th>
+                                          <th className="text-right py-1 pr-4">Units</th>
+                                          <th className="text-right py-1 pr-4">Price</th>
+                                          <th className="text-right py-1 pr-4">Cost</th>
+                                          <th className="text-right py-1 pr-4">Gain/Loss</th>
+                                          <th className="text-left py-1 pr-4">Notes</th>
+                                          <th className="w-8"></th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {lots.map((lot) => {
+                                          const lotCost = Number(lot.units) * Number(lot.purchase_price)
+                                          const lotValue = Number(lot.units) * (holding.current_price || Number(lot.purchase_price))
+                                          const lotGain = lotValue - lotCost
+                                          const lotGainPct = lotCost > 0 ? (lotGain / lotCost) * 100 : 0
+
+                                          return (
+                                            <tr key={lot.id} className="text-sm border-t border-slate-200">
+                                              <td className="py-2 pr-4 text-slate-600">
+                                                {formatDate(lot.purchase_date)}
+                                              </td>
+                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                                {Number(lot.units).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                              </td>
+                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                                {formatCurrency(Number(lot.purchase_price), currency)}
+                                              </td>
+                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                                {formatCurrency(lotCost, currency)}
+                                              </td>
+                                              <td className={`py-2 pr-4 text-right font-medium ${
+                                                lotGain >= 0 ? 'text-green-600' : 'text-red-600'
+                                              }`}>
+                                                {holding.current_price ? (
+                                                  <>
+                                                    {lotGain >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
+                                                  </>
+                                                ) : '-'}
+                                              </td>
+                                              <td className="py-2 pr-4 text-slate-500 text-sm">
+                                                {lot.notes || '-'}
+                                              </td>
+                                              <td className="py-2">
+                                                <button
+                                                  onClick={() => handleDeleteLot(lot.id)}
+                                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                  title="Delete lot"
+                                                >
+                                                  <Trash2 className="w-3 h-3" />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                    {holding.thesis && (
+                                      <div className="mt-3 pt-3 border-t border-slate-200">
+                                        <p className="text-xs font-medium text-slate-500 uppercase mb-1">Thesis</p>
+                                        <p className="text-sm text-slate-600">{holding.thesis}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-12 text-slate-400">
             <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>No holdings yet</p>
-            <p className="text-sm mb-4">Add your first holding to get started</p>
-            <button className="btn-primary">
-              <Plus className="w-4 h-4 inline mr-2" />
-              Add Holding
-            </button>
+            <p className="text-sm mb-4">Add your first holding or import from your HTML tracker</p>
+            <div className="flex justify-center gap-3">
+              <button 
+                onClick={() => setShowImport(true)}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Import Data
+              </button>
+              <button 
+                onClick={() => setShowAddHolding(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Holding
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <AddHoldingModal
+        isOpen={showAddHolding}
+        onClose={() => setShowAddHolding(false)}
+        onSuccess={loadData}
+      />
+      <AddLotModal
+        isOpen={showAddLot}
+        onClose={() => {
+          setShowAddLot(false)
+          setSelectedHolding(null)
+        }}
+        onSuccess={loadData}
+        holding={selectedHolding}
+      />
+      <EditHoldingModal
+        isOpen={showEditHolding}
+        onClose={() => {
+          setShowEditHolding(false)
+          setSelectedHolding(null)
+        }}
+        onSuccess={loadData}
+        onDelete={loadData}
+        holding={selectedHolding}
+      />
+      <CashBalanceModal
+        isOpen={showCashBalance}
+        onClose={() => setShowCashBalance(false)}
+        onSuccess={loadData}
+      />
+      <ImportDataModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onSuccess={loadData}
+      />
     </div>
   )
 }
