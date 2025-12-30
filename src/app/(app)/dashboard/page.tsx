@@ -165,7 +165,7 @@ export default async function DashboardPage() {
             <div>
               <p className="text-sm text-slate-500">Portfolio Value</p>
               <p className="text-2xl font-bold text-slate-900">
-                ${stats.totalValueAUD.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 0 })}
+                ${stats.totalValueAUD.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
               <p className="text-sm text-slate-400">AUD (incl. cash)</p>
             </div>
@@ -209,7 +209,7 @@ export default async function DashboardPage() {
             <div>
               <p className="text-sm text-slate-500">Total Gain/Loss</p>
               <p className={`text-2xl font-bold ${stats.totalGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {stats.totalGain >= 0 ? '+' : ''}${Math.abs(stats.totalGain).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 0 })}
+                {stats.totalGain >= 0 ? '+' : ''}${Math.abs(stats.totalGain).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
               <p className={`text-sm ${stats.totalGain >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {stats.totalGain >= 0 ? '+' : ''}{stats.totalGainPct.toFixed(2)}%
