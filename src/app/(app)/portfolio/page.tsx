@@ -18,6 +18,7 @@ import AddLotModal from '@/components/AddLotModal'
 import EditHoldingModal from '@/components/EditHoldingModal'
 import CashBalanceModal from '@/components/CashBalanceModal'
 import ImportDataModal from '@/components/ImportDataModal'
+import RefreshPricesButton from '@/components/RefreshPricesButton'
 
 interface Lot {
   id: string
@@ -54,6 +55,7 @@ export default function PortfolioPage() {
   const [cashBalances, setCashBalances] = useState<CashBalance[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedHoldings, setExpandedHoldings] = useState<Set<string>>(new Set())
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null)
   
   // Modal states
   const [showAddHolding, setShowAddHolding] = useState(false)
@@ -85,6 +87,7 @@ export default function PortfolioPage() {
     setHoldings(holdingsData || [])
     setCashBalances(cashData || [])
     setLoading(false)
+    setLastPriceUpdate(new Date())
   }, [])
 
   useEffect(() => {
@@ -131,14 +134,15 @@ export default function PortfolioPage() {
     const totalUnits = lots.reduce((sum, lot) => sum + Number(lot.units), 0)
     const totalCost = lots.reduce((sum, lot) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0)
     const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
-    const currentValue = totalUnits * (holding.current_price || avgPrice)
+    const currentPrice = holding.current_price || avgPrice
+    const currentValue = totalUnits * currentPrice
     const gainLoss = currentValue - totalCost
     const gainLossPct = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0
     const firstBuyDate = lots.length > 0 
       ? lots.reduce((earliest, lot) => lot.purchase_date < earliest ? lot.purchase_date : earliest, lots[0].purchase_date)
       : null
 
-    return { totalUnits, totalCost, avgPrice, currentValue, gainLoss, gainLossPct, firstBuyDate }
+    return { totalUnits, totalCost, avgPrice, currentPrice, currentValue, gainLoss, gainLossPct, firstBuyDate }
   }
 
   const getCurrencySymbol = (currency: string) => {
@@ -159,6 +163,29 @@ export default function PortfolioPage() {
     })
   }
 
+  // Calculate portfolio totals by currency
+  const calculatePortfolioTotals = () => {
+    const totals: Record<string, { value: number; cost: number; gain: number }> = {
+      AUD: { value: 0, cost: 0, gain: 0 },
+      USD: { value: 0, cost: 0, gain: 0 },
+      INR: { value: 0, cost: 0, gain: 0 }
+    }
+
+    holdings.forEach(holding => {
+      const stats = calculateHoldingStats(holding)
+      const currency = holding.currency
+      if (totals[currency]) {
+        totals[currency].value += stats.currentValue
+        totals[currency].cost += stats.totalCost
+        totals[currency].gain += stats.gainLoss
+      }
+    })
+
+    return totals
+  }
+
+  const portfolioTotals = calculatePortfolioTotals()
+
   // Group holdings by currency
   const holdingsByCurrency = holdings.reduce((acc, holding) => {
     const currency = holding.currency
@@ -176,6 +203,7 @@ export default function PortfolioPage() {
           <p className="text-slate-500">Track your holdings and performance</p>
         </div>
         <div className="flex items-center gap-2">
+          <RefreshPricesButton onSuccess={loadData} />
           <div className="relative">
             <button 
               onClick={() => setShowMenu(!showMenu)}
@@ -221,40 +249,82 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Cash balances */}
+      {/* Portfolio Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div 
-          className="card cursor-pointer hover:border-primary-300 transition-colors"
-          onClick={() => setShowCashBalance(true)}
-        >
-          <p className="text-sm text-slate-500 mb-1">Cash (AUD)</p>
-          <p className="text-xl font-bold text-slate-900">
-            ${getCashByCurrency('AUD').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+        {/* AUD */}
+        <div className="card">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-sm text-slate-500">🇦🇺 Australian (AUD)</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ${(portfolioTotals.AUD.value + getCashByCurrency('AUD')).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
           </p>
+          <div className="flex justify-between mt-2 text-sm">
+            <span className="text-slate-500">
+              Cash: ${getCashByCurrency('AUD').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+            </span>
+            {portfolioTotals.AUD.cost > 0 && (
+              <span className={portfolioTotals.AUD.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {portfolioTotals.AUD.gain >= 0 ? '+' : ''}
+                {((portfolioTotals.AUD.gain / portfolioTotals.AUD.cost) * 100).toFixed(2)}%
+              </span>
+            )}
+          </div>
         </div>
-        <div 
-          className="card cursor-pointer hover:border-primary-300 transition-colors"
-          onClick={() => setShowCashBalance(true)}
-        >
-          <p className="text-sm text-slate-500 mb-1">Cash (USD)</p>
-          <p className="text-xl font-bold text-slate-900">
-            ${getCashByCurrency('USD').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+
+        {/* USD */}
+        <div className="card">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-sm text-slate-500">🇺🇸 US (USD)</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ${(portfolioTotals.USD.value + getCashByCurrency('USD')).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
+          <div className="flex justify-between mt-2 text-sm">
+            <span className="text-slate-500">
+              Cash: ${getCashByCurrency('USD').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </span>
+            {portfolioTotals.USD.cost > 0 && (
+              <span className={portfolioTotals.USD.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {portfolioTotals.USD.gain >= 0 ? '+' : ''}
+                {((portfolioTotals.USD.gain / portfolioTotals.USD.cost) * 100).toFixed(2)}%
+              </span>
+            )}
+          </div>
         </div>
-        <div 
-          className="card cursor-pointer hover:border-primary-300 transition-colors"
-          onClick={() => setShowCashBalance(true)}
-        >
-          <p className="text-sm text-slate-500 mb-1">Cash (INR)</p>
-          <p className="text-xl font-bold text-slate-900">
-            ₹{getCashByCurrency('INR').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+
+        {/* INR */}
+        <div className="card">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-sm text-slate-500">🇮🇳 Indian (INR)</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ₹{(portfolioTotals.INR.value + getCashByCurrency('INR')).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </p>
+          <div className="flex justify-between mt-2 text-sm">
+            <span className="text-slate-500">
+              Cash: ₹{getCashByCurrency('INR').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </span>
+            {portfolioTotals.INR.cost > 0 && (
+              <span className={portfolioTotals.INR.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {portfolioTotals.INR.gain >= 0 ? '+' : ''}
+                {((portfolioTotals.INR.gain / portfolioTotals.INR.cost) * 100).toFixed(2)}%
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Holdings */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Holdings</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Holdings</h3>
+          {lastPriceUpdate && (
+            <span className="text-xs text-slate-400">
+              Prices as of {lastPriceUpdate.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
         
         {loading ? (
           <div className="text-center py-12 text-slate-400">
@@ -280,6 +350,7 @@ export default function PortfolioPage() {
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Avg Price</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Current</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Value</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Gain/Loss</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500 w-20">Actions</th>
                       </tr>
@@ -289,6 +360,7 @@ export default function PortfolioPage() {
                         const stats = calculateHoldingStats(holding)
                         const isExpanded = expandedHoldings.has(holding.id)
                         const lots = holding.lots || []
+                        const hasLivePrice = holding.current_price !== null
 
                         return (
                           <>
@@ -334,11 +406,16 @@ export default function PortfolioPage() {
                               <td className="py-3 px-4 text-sm text-slate-900 text-right">
                                 {formatCurrency(stats.avgPrice, currency)}
                               </td>
-                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
-                                {holding.current_price 
-                                  ? formatCurrency(holding.current_price, currency)
-                                  : '-'
-                                }
+                              <td className="py-3 px-4 text-sm text-right">
+                                <span className={hasLivePrice ? 'text-slate-900' : 'text-slate-400'}>
+                                  {formatCurrency(stats.currentPrice, currency)}
+                                </span>
+                                {!hasLivePrice && (
+                                  <span className="text-xs text-slate-400 block">avg</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right font-medium">
+                                {formatCurrency(stats.currentValue, currency)}
                               </td>
                               <td className={`py-3 px-4 text-sm text-right font-medium ${
                                 stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'
@@ -375,7 +452,7 @@ export default function PortfolioPage() {
                             {/* Expanded lots */}
                             {isExpanded && lots.length > 0 && (
                               <tr key={`${holding.id}-lots`}>
-                                <td colSpan={9} className="bg-slate-50 px-4 py-3">
+                                <td colSpan={10} className="bg-slate-50 px-4 py-3">
                                   <div className="ml-8">
                                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">Purchase Lots</p>
                                     <table className="w-full">
@@ -393,7 +470,7 @@ export default function PortfolioPage() {
                                       <tbody>
                                         {lots.map((lot) => {
                                           const lotCost = Number(lot.units) * Number(lot.purchase_price)
-                                          const lotValue = Number(lot.units) * (holding.current_price || Number(lot.purchase_price))
+                                          const lotValue = Number(lot.units) * stats.currentPrice
                                           const lotGain = lotValue - lotCost
                                           const lotGainPct = lotCost > 0 ? (lotGain / lotCost) * 100 : 0
 
@@ -414,7 +491,7 @@ export default function PortfolioPage() {
                                               <td className={`py-2 pr-4 text-right font-medium ${
                                                 lotGain >= 0 ? 'text-green-600' : 'text-red-600'
                                               }`}>
-                                                {holding.current_price ? (
+                                                {hasLivePrice ? (
                                                   <>
                                                     {lotGain >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
                                                   </>
