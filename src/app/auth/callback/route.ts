@@ -30,23 +30,3 @@ export async function GET(request: NextRequest) {
   // Redirect to login if something went wrong
   return NextResponse.redirect(new URL('/login', request.url))
 }
-```
-
----
-
-## Your Auth Folder Structure Should Be:
-```
-src/app/auth/
-├── callback/
-│   └── route.ts      ← NEW (handles OAuth/email redirects)
-└── confirm/
-    └── route.ts      ← Already exists (handles OTP confirmation)
-```
-
----
-
-## Also Add to Supabase Redirect URLs:
-
-Add this URL if not already there:
-```
-https://self-wealth-tracker-app.vercel.app/auth/confirm
