@@ -12,6 +12,7 @@ import {
   Shield,
   Search,
   TrendingUp,
+  BookOpen,
   Settings,
   LogOut,
 } from 'lucide-react'
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/assessor', label: 'Assessor', icon: Search },
   { href: '/risk', label: 'Risk', icon: Shield },
   { href: '/momentum', label: 'Momentum', icon: TrendingUp },
+  { href: '/journal', label: 'Journal', icon: BookOpen, isNew: true },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -63,7 +65,7 @@ export default function Sidebar() {
                 >
                   <Icon className="w-5 h-5" />
                   {item.label}
-                  {item.label === 'Momentum' && (
+                  {item.isNew && (
                     <span className="ml-auto text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
                       NEW
                     </span>
