@@ -7,7 +7,7 @@ export interface TechnicalIndicators {
   // Current values
   rsi: number
   macd: number
-  macdSignal: number
+  macdSignalLine: number
   macdHistogram: number
   sma20: number
   sma50: number
@@ -17,7 +17,7 @@ export interface TechnicalIndicators {
   
   // Signals
   rsiSignal: 'oversold' | 'overbought' | 'neutral'
-  macdSignal: 'bullish' | 'bearish' | 'neutral'
+  macdTrend: 'bullish' | 'bearish' | 'neutral'
   trendSignal: 'bullish' | 'bearish' | 'neutral'
   
   // Volume analysis
@@ -158,7 +158,7 @@ export function calculateIndicators(priceData: PriceData[]): TechnicalIndicators
   
   // MACD
   const { macd, signal, histogram } = calculateMACD(closes)
-  const macdSignalType: 'bullish' | 'bearish' | 'neutral' =
+  const macdTrend: 'bullish' | 'bearish' | 'neutral' =
     histogram > 0 && macd > signal ? 'bullish' :
     histogram < 0 && macd < signal ? 'bearish' : 'neutral'
   
@@ -208,7 +208,7 @@ export function calculateIndicators(priceData: PriceData[]): TechnicalIndicators
   return {
     rsi,
     macd,
-    macdSignal: signal,
+    macdSignalLine: signal,
     macdHistogram: histogram,
     sma20,
     sma50,
@@ -216,7 +216,7 @@ export function calculateIndicators(priceData: PriceData[]): TechnicalIndicators
     ema12,
     ema26,
     rsiSignal,
-    macdSignal: macdSignalType,
+    macdTrend,
     trendSignal,
     volumeRatio,
     volumeSignal,
@@ -249,9 +249,9 @@ export function generateSignal(
   else if (indicators.rsi > 60) bearishSignals.push('RSI approaching overbought')
   
   // MACD signals
-  if (indicators.macdHistogram > 0 && indicators.macd > indicators.macdSignal) {
+  if (indicators.macdHistogram > 0 && indicators.macd > indicators.macdSignalLine) {
     bullishSignals.push('MACD bullish crossover')
-  } else if (indicators.macdHistogram < 0 && indicators.macd < indicators.macdSignal) {
+  } else if (indicators.macdHistogram < 0 && indicators.macd < indicators.macdSignalLine) {
     bearishSignals.push('MACD bearish crossover')
   }
   
@@ -282,7 +282,6 @@ export function generateSignal(
   else if (score <= 40) signal = 'SELL'
   
   // Calculate trade setup
-  const atr = calculateATR(priceData, 14)
   const stopLossPercent = 0.08 // 8% stop loss
   const stopLoss = currentPrice * (1 - stopLossPercent)
   
