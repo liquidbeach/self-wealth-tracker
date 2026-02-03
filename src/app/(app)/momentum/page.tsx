@@ -22,6 +22,7 @@ import {
   Calendar,
   Download,
   Filter,
+  X,
 } from 'lucide-react'
 
 interface MomentumSignal {
@@ -78,6 +79,7 @@ const STOCK_LISTS = [
   { id: 'sp500_top', name: 'S&P 500 Top 30' },
   { id: 'tech', name: 'Tech & Growth' },
   { id: 'momentum', name: 'High Momentum' },
+  { id: 'custom', name: 'Custom Search' },
 ]
 
 const PERIOD_FILTERS = [
@@ -98,6 +100,10 @@ export default function MomentumPage() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [summary, setSummary] = useState<any>(null)
   const [periodFilter, setPeriodFilter] = useState('all')
+  
+  // Custom search state
+  const [customSymbols, setCustomSymbols] = useState('')
+  const [symbolTags, setSymbolTags] = useState<string[]>([])
 
   // Load active trades from Supabase
   useEffect(() => {
@@ -155,13 +161,35 @@ export default function MomentumPage() {
     }
   }
 
+  const handleAddSymbol = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const symbol = customSymbols.trim().toUpperCase().replace(',', '')
+      if (symbol && !symbolTags.includes(symbol)) {
+        setSymbolTags([...symbolTags, symbol])
+      }
+      setCustomSymbols('')
+    }
+  }
+
+  const removeSymbolTag = (symbol: string) => {
+    setSymbolTags(symbolTags.filter(s => s !== symbol))
+  }
+
   const runScanner = async () => {
     setLoading(true)
     try {
+      const body: any = { list: selectedList }
+      
+      // If custom search, use the symbol tags
+      if (selectedList === 'custom' && symbolTags.length > 0) {
+        body.customSymbols = symbolTags
+      }
+      
       const response = await fetch('/api/momentum', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ list: selectedList }),
+        body: JSON.stringify(body),
       })
       
       const data = await response.json()
@@ -398,7 +426,7 @@ export default function MomentumPage() {
       {/* Scanner Tab */}
       {activeTab === 'scanner' && (
         <div className="space-y-4">
-          {/* Controls - FIXED ALIGNMENT */}
+          {/* Controls */}
           <div className="card">
             <div className="flex flex-wrap items-end gap-4">
               <div>
@@ -413,9 +441,46 @@ export default function MomentumPage() {
                   ))}
                 </select>
               </div>
+              
+              {/* Custom Symbol Input */}
+              {selectedList === 'custom' && (
+                <div className="flex-1 min-w-[250px]">
+                  <label className="text-sm text-slate-600 block mb-1">
+                    Enter Symbols (press Enter after each)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2 p-2 border border-slate-300 rounded-lg bg-white min-h-[42px]">
+                    {symbolTags.map(symbol => (
+                      <span 
+                        key={symbol}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded text-sm"
+                      >
+                        {symbol}
+                        <button 
+                          onClick={() => removeSymbolTag(symbol)}
+                          className="hover:text-primary-900"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      value={customSymbols}
+                      onChange={(e) => setCustomSymbols(e.target.value.toUpperCase())}
+                      onKeyDown={handleAddSymbol}
+                      placeholder={symbolTags.length === 0 ? "AAPL, MSFT, NVDA..." : "Add more..."}
+                      className="flex-1 min-w-[100px] outline-none text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {symbolTags.length} symbol{symbolTags.length !== 1 ? 's' : ''} added
+                  </p>
+                </div>
+              )}
+              
               <button
                 onClick={runScanner}
-                disabled={loading}
+                disabled={loading || (selectedList === 'custom' && symbolTags.length === 0)}
                 className="btn-primary flex items-center gap-2"
               >
                 {loading ? (
@@ -619,7 +684,12 @@ export default function MomentumPage() {
             <div className="card text-center py-12">
               <TrendingUp className="w-12 h-12 mx-auto mb-3 text-slate-300" />
               <p className="text-slate-500">Run the scanner to find momentum opportunities</p>
-              <p className="text-sm text-slate-400 mt-1">We'll analyze RSI, MACD, and volume patterns</p>
+              <p className="text-sm text-slate-400 mt-1">
+                {selectedList === 'custom' 
+                  ? 'Enter stock symbols above and click Run Scanner'
+                  : "We'll analyze RSI, MACD, and volume patterns"
+                }
+              </p>
             </div>
           )}
         </div>
@@ -677,7 +747,7 @@ export default function MomentumPage() {
         </div>
       )}
 
-      {/* History Tab - ENHANCED */}
+      {/* History Tab */}
       {activeTab === 'history' && (
         <div className="space-y-4">
           {/* Period Filter and Export */}
