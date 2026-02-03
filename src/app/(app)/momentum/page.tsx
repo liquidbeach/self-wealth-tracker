@@ -468,7 +468,7 @@ export default function MomentumPage() {
                       value={customSymbols}
                       onChange={(e) => setCustomSymbols(e.target.value.toUpperCase())}
                       onKeyDown={handleAddSymbol}
-                      placeholder={symbolTags.length === 0 ? "AAPL, MSFT, NVDA..." : "Add more..."}
+                      placeholder={symbolTags.length === 0 ? "Type symbol + Enter (e.g. AAPL)" : "Add more..."}
                       className="flex-1 min-w-[100px] outline-none text-sm"
                     />
                   </div>
