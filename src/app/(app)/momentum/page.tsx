@@ -19,6 +19,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  Calendar,
+  Download,
+  Filter,
 } from 'lucide-react'
 
 interface MomentumSignal {
@@ -77,6 +80,14 @@ const STOCK_LISTS = [
   { id: 'momentum', name: 'High Momentum' },
 ]
 
+const PERIOD_FILTERS = [
+  { id: 'all', name: 'All Time' },
+  { id: 'month', name: 'This Month' },
+  { id: 'quarter', name: 'This Quarter' },
+  { id: 'halfyear', name: 'Last 6 Months' },
+  { id: 'year', name: 'This Year' },
+]
+
 export default function MomentumPage() {
   const [activeTab, setActiveTab] = useState<'scanner' | 'active' | 'history'>('scanner')
   const [signals, setSignals] = useState<MomentumSignal[]>([])
@@ -86,6 +97,7 @@ export default function MomentumPage() {
   const [selectedList, setSelectedList] = useState('sp500_top')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [summary, setSummary] = useState<any>(null)
+  const [periodFilter, setPeriodFilter] = useState('all')
 
   // Load active trades from Supabase
   useEffect(() => {
@@ -124,7 +136,7 @@ export default function MomentumPage() {
       .select('*')
       .eq('status', 'closed')
       .order('exit_date', { ascending: false })
-      .limit(50)
+      .limit(100)
     
     if (data) {
       setTradeHistory(data.map(t => ({
@@ -229,21 +241,113 @@ export default function MomentumPage() {
     return 'text-red-600'
   }
 
-  // Calculate performance stats
+  // Filter trades by period
+  const getFilteredHistory = () => {
+    if (periodFilter === 'all') return tradeHistory
+    
+    const now = new Date()
+    let startDate: Date
+    
+    switch (periodFilter) {
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      case 'quarter':
+        const quarter = Math.floor(now.getMonth() / 3)
+        startDate = new Date(now.getFullYear(), quarter * 3, 1)
+        break
+      case 'halfyear':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+        break
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      default:
+        return tradeHistory
+    }
+    
+    return tradeHistory.filter(t => new Date(t.exitDate) >= startDate)
+  }
+
+  const filteredHistory = getFilteredHistory()
+
+  // Calculate performance stats for filtered period
   const stats = {
-    totalTrades: tradeHistory.length,
-    wins: tradeHistory.filter(t => t.result === 'win').length,
-    losses: tradeHistory.filter(t => t.result === 'loss').length,
-    winRate: tradeHistory.length > 0 
-      ? (tradeHistory.filter(t => t.result === 'win').length / tradeHistory.length) * 100 
+    totalTrades: filteredHistory.length,
+    wins: filteredHistory.filter(t => t.result === 'win').length,
+    losses: filteredHistory.filter(t => t.result === 'loss').length,
+    winRate: filteredHistory.length > 0 
+      ? (filteredHistory.filter(t => t.result === 'win').length / filteredHistory.length) * 100 
       : 0,
-    totalPnL: tradeHistory.reduce((sum, t) => sum + t.pnl, 0),
-    avgWin: tradeHistory.filter(t => t.result === 'win').length > 0
-      ? tradeHistory.filter(t => t.result === 'win').reduce((sum, t) => sum + t.pnlPercent, 0) / tradeHistory.filter(t => t.result === 'win').length
+    totalPnL: filteredHistory.reduce((sum, t) => sum + t.pnl, 0),
+    avgWin: filteredHistory.filter(t => t.result === 'win').length > 0
+      ? filteredHistory.filter(t => t.result === 'win').reduce((sum, t) => sum + t.pnlPercent, 0) / filteredHistory.filter(t => t.result === 'win').length
       : 0,
-    avgLoss: tradeHistory.filter(t => t.result === 'loss').length > 0
-      ? tradeHistory.filter(t => t.result === 'loss').reduce((sum, t) => sum + t.pnlPercent, 0) / tradeHistory.filter(t => t.result === 'loss').length
+    avgLoss: filteredHistory.filter(t => t.result === 'loss').length > 0
+      ? filteredHistory.filter(t => t.result === 'loss').reduce((sum, t) => sum + t.pnlPercent, 0) / filteredHistory.filter(t => t.result === 'loss').length
       : 0,
+  }
+
+  // Group trades by month for breakdown
+  const getMonthlyBreakdown = () => {
+    const breakdown: Record<string, { trades: number; pnl: number; wins: number; losses: number }> = {}
+    
+    filteredHistory.forEach(trade => {
+      const monthKey = trade.exitDate.substring(0, 7) // YYYY-MM
+      if (!breakdown[monthKey]) {
+        breakdown[monthKey] = { trades: 0, pnl: 0, wins: 0, losses: 0 }
+      }
+      breakdown[monthKey].trades++
+      breakdown[monthKey].pnl += trade.pnl
+      if (trade.result === 'win') breakdown[monthKey].wins++
+      else breakdown[monthKey].losses++
+    })
+    
+    return Object.entries(breakdown)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 6)
+  }
+
+  const monthlyBreakdown = getMonthlyBreakdown()
+
+  // Export to CSV for tax purposes
+  const exportToCSV = () => {
+    const headers = ['Symbol', 'Name', 'Entry Date', 'Entry Price', 'Exit Date', 'Exit Price', 'Units', 'P&L ($)', 'P&L (%)', 'Result', 'Holding Period']
+    
+    const rows = filteredHistory.map(t => {
+      const entryDate = new Date(t.entryDate)
+      const exitDate = new Date(t.exitDate)
+      const holdingDays = Math.ceil((exitDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24))
+      const holdingPeriod = holdingDays <= 365 ? 'Short-term' : 'Long-term'
+      
+      return [
+        t.symbol,
+        t.name,
+        t.entryDate,
+        t.entryPrice.toFixed(2),
+        t.exitDate,
+        t.exitPrice.toFixed(2),
+        t.units,
+        t.pnl.toFixed(2),
+        t.pnlPercent.toFixed(2),
+        t.result,
+        holdingPeriod,
+      ].join(',')
+    })
+    
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `momentum-trades-${periodFilter}-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+  }
+
+  const formatMonth = (monthKey: string) => {
+    const [year, month] = monthKey.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1)
+    return date.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
   }
 
   return (
@@ -294,40 +398,38 @@ export default function MomentumPage() {
       {/* Scanner Tab */}
       {activeTab === 'scanner' && (
         <div className="space-y-4">
-          {/* Controls */}
+          {/* Controls - FIXED ALIGNMENT */}
           <div className="card">
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-end gap-4">
               <div>
-                <label className="text-sm text-slate-600">Stock List</label>
+                <label className="text-sm text-slate-600 block mb-1">Stock List</label>
                 <select
                   value={selectedList}
                   onChange={(e) => setSelectedList(e.target.value)}
-                  className="input mt-1"
+                  className="input"
                 >
                   {STOCK_LISTS.map(list => (
                     <option key={list.id} value={list.id}>{list.name}</option>
                   ))}
                 </select>
               </div>
-              <div className="flex items-end">
-                <button
-                  onClick={runScanner}
-                  disabled={loading}
-                  className="btn-primary flex items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4" />
-                      Run Scanner
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={runScanner}
+                disabled={loading}
+                className="btn-primary flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    Run Scanner
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -575,9 +677,35 @@ export default function MomentumPage() {
         </div>
       )}
 
-      {/* History Tab */}
+      {/* History Tab - ENHANCED */}
       {activeTab === 'history' && (
         <div className="space-y-4">
+          {/* Period Filter and Export */}
+          <div className="card">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <label className="text-sm text-slate-600 block mb-1">Time Period</label>
+                <select
+                  value={periodFilter}
+                  onChange={(e) => setPeriodFilter(e.target.value)}
+                  className="input"
+                >
+                  {PERIOD_FILTERS.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={exportToCSV}
+                disabled={filteredHistory.length === 0}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV (Tax)
+              </button>
+            </div>
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="card">
@@ -603,8 +731,31 @@ export default function MomentumPage() {
             </div>
           </div>
 
+          {/* Monthly Breakdown */}
+          {monthlyBreakdown.length > 0 && (
+            <div className="card">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Monthly Breakdown
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {monthlyBreakdown.map(([month, data]) => (
+                  <div key={month} className="bg-slate-50 rounded-lg p-3">
+                    <p className="text-xs text-slate-500">{formatMonth(month)}</p>
+                    <p className={`text-lg font-bold ${data.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${data.pnl.toFixed(0)}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {data.trades} trades • {data.wins}W/{data.losses}L
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Trade History Table */}
-          {tradeHistory.length > 0 ? (
+          {filteredHistory.length > 0 ? (
             <div className="card overflow-hidden">
               <table className="w-full">
                 <thead>
@@ -615,11 +766,11 @@ export default function MomentumPage() {
                     <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">P&L</th>
                     <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Result</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Date</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Exit Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tradeHistory.map(trade => (
+                  {filteredHistory.map(trade => (
                     <tr key={trade.id} className="border-b border-slate-100">
                       <td className="py-3 px-4">
                         <p className="font-medium text-slate-900">{trade.symbol}</p>
