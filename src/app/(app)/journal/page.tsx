@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import {
   BookOpen,
@@ -25,6 +25,7 @@ import {
   Award,
   BarChart3,
   X,
+  RefreshCw,
 } from 'lucide-react'
 
 interface Trade {
@@ -48,6 +49,12 @@ interface Trade {
   checklist_completed: boolean
   pnl?: number
   pnl_percent?: number
+  // Live data
+  current_price?: number
+  live_pnl?: number
+  live_pnl_percent?: number
+  price_vs_target?: number
+  price_vs_stop?: number
 }
 
 interface PerformanceStats {
@@ -101,9 +108,22 @@ const PRE_TRADE_CHECKLIST = [
   { id: 'conviction', label: 'Would I buy this fresh today?' },
 ]
 
+// Fetch live price from Yahoo Finance
+async function fetchLivePrice(symbol: string): Promise<number | null> {
+  try {
+    const response = await fetch(`/api/quote?symbol=${symbol}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.price || null
+  } catch {
+    return null
+  }
+}
+
 export default function TradingJournalPage() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshingPrices, setRefreshingPrices] = useState(false)
   const [showNewTradeModal, setShowNewTradeModal] = useState(false)
   const [showCloseTradeModal, setShowCloseTradeModal] = useState(false)
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null)
@@ -111,6 +131,7 @@ export default function TradingJournalPage() {
   const [periodFilter, setPeriodFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [marketFilter, setMarketFilter] = useState('all')
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null)
   
   // New trade form state
   const [newTrade, setNewTrade] = useState({
@@ -134,8 +155,60 @@ export default function TradingJournalPage() {
     lessons_learned: '',
   })
 
+  // Open trades live P&L summary
+  const [openTradesSummary, setOpenTradesSummary] = useState({
+    totalValue: 0,
+    totalCost: 0,
+    totalPnL: 0,
+    totalPnLPercent: 0,
+  })
+
   useEffect(() => {
     loadTrades()
+  }, [])
+
+  // Refresh prices for open trades
+  const refreshLivePrices = useCallback(async (tradesToUpdate: Trade[]) => {
+    const openTrades = tradesToUpdate.filter(t => t.status === 'open')
+    if (openTrades.length === 0) return tradesToUpdate
+
+    setRefreshingPrices(true)
+    
+    const updatedTrades = await Promise.all(
+      tradesToUpdate.map(async (trade) => {
+        if (trade.status !== 'open') return trade
+        
+        const currentPrice = await fetchLivePrice(trade.symbol)
+        if (currentPrice === null) return trade
+        
+        const livePnl = (currentPrice - trade.entry_price) * trade.units
+        const livePnlPercent = ((currentPrice - trade.entry_price) / trade.entry_price) * 100
+        const priceVsTarget = ((trade.target_price - currentPrice) / currentPrice) * 100
+        const priceVsStop = ((currentPrice - trade.stop_loss) / trade.stop_loss) * 100
+        
+        return {
+          ...trade,
+          current_price: currentPrice,
+          live_pnl: livePnl,
+          live_pnl_percent: livePnlPercent,
+          price_vs_target: priceVsTarget,
+          price_vs_stop: priceVsStop,
+        }
+      })
+    )
+
+    // Calculate open trades summary
+    const openWithPrices = updatedTrades.filter(t => t.status === 'open' && t.current_price)
+    const totalValue = openWithPrices.reduce((sum, t) => sum + (t.current_price || 0) * t.units, 0)
+    const totalCost = openWithPrices.reduce((sum, t) => sum + t.entry_price * t.units, 0)
+    const totalPnL = totalValue - totalCost
+    const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+    setOpenTradesSummary({ totalValue, totalCost, totalPnL, totalPnLPercent })
+    setLastPriceUpdate(new Date())
+    setRefreshingPrices(false)
+    
+    return updatedTrades
   }, [])
 
   const loadTrades = async () => {
@@ -156,9 +229,17 @@ export default function TradingJournalPage() {
           : null
         return { ...t, pnl, pnl_percent }
       })
-      setTrades(tradesWithPnL)
+      
+      // Fetch live prices for open trades
+      const tradesWithLive = await refreshLivePrices(tradesWithPnL)
+      setTrades(tradesWithLive)
     }
     setLoading(false)
+  }
+
+  const handleRefreshPrices = async () => {
+    const updated = await refreshLivePrices(trades)
+    setTrades(updated)
   }
 
   // Filter trades by period
@@ -380,6 +461,27 @@ export default function TradingJournalPage() {
     a.click()
   }
 
+  const getStatusIndicator = (trade: Trade) => {
+    if (!trade.current_price) return null
+    
+    const pctToTarget = ((trade.target_price - trade.current_price) / trade.current_price) * 100
+    const pctToStop = ((trade.current_price - trade.stop_loss) / trade.stop_loss) * 100
+    
+    if (trade.current_price >= trade.target_price) {
+      return { color: 'text-green-600 bg-green-100', label: '🎯 HIT TARGET!' }
+    }
+    if (trade.current_price <= trade.stop_loss) {
+      return { color: 'text-red-600 bg-red-100', label: '🛑 HIT STOP-LOSS!' }
+    }
+    if (pctToTarget < 5) {
+      return { color: 'text-green-600 bg-green-50', label: `${pctToTarget.toFixed(1)}% to target` }
+    }
+    if (pctToStop < 3) {
+      return { color: 'text-red-600 bg-red-50', label: `${pctToStop.toFixed(1)}% above stop` }
+    }
+    return null
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -397,12 +499,61 @@ export default function TradingJournalPage() {
         </button>
       </div>
 
+      {/* Open Positions Live Summary */}
+      {openTrades.length > 0 && (
+        <div className="card bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Open Positions — Live
+            </h2>
+            <div className="flex items-center gap-3">
+              {lastPriceUpdate && (
+                <span className="text-xs text-primary-200">
+                  Updated {lastPriceUpdate.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={handleRefreshPrices}
+                disabled={refreshingPrices}
+                className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${refreshingPrices ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-primary-200 text-sm">Total Cost</p>
+              <p className="text-xl font-bold">${openTradesSummary.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Current Value</p>
+              <p className="text-xl font-bold">${openTradesSummary.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Unrealized P&L</p>
+              <p className={`text-xl font-bold ${openTradesSummary.totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                {openTradesSummary.totalPnL >= 0 ? '+' : ''}${openTradesSummary.totalPnL.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Return</p>
+              <p className={`text-xl font-bold ${openTradesSummary.totalPnLPercent >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                {openTradesSummary.totalPnLPercent >= 0 ? '+' : ''}{openTradesSummary.totalPnLPercent.toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Performance Dashboard */}
       <div className="card bg-gradient-to-br from-slate-900 to-slate-800 text-white">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Performance Overview
+            Closed Trades Performance
           </h2>
           <div className="flex gap-2">
             <select
@@ -573,7 +724,7 @@ export default function TradingJournalPage() {
         </div>
       </div>
 
-      {/* Open Trades */}
+      {/* Open Trades with Live Prices */}
       {openTrades.length > 0 && (
         <div className="card">
           <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -581,49 +732,90 @@ export default function TradingJournalPage() {
             Open Positions ({openTrades.length})
           </h3>
           <div className="space-y-3">
-            {openTrades.map(trade => (
-              <div key={trade.id} className="bg-slate-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{trade.market === 'US' ? '🇺🇸' : '🇦🇺'}</span>
-                    <div>
-                      <p className="font-semibold text-slate-900">{trade.symbol}</p>
-                      <p className="text-xs text-slate-500">{trade.name}</p>
+            {openTrades.map(trade => {
+              const statusIndicator = getStatusIndicator(trade)
+              return (
+                <div key={trade.id} className="bg-slate-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{trade.market === 'US' ? '🇺🇸' : '🇦🇺'}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-900">{trade.symbol}</p>
+                          {trade.trade_type === 'paper' && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">PAPER</span>
+                          )}
+                          {statusIndicator && (
+                            <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusIndicator.color}`}>
+                              {statusIndicator.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">{trade.name}</p>
+                      </div>
                     </div>
-                    {trade.trade_type === 'paper' && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">PAPER</span>
-                    )}
+                    
+                    {/* Live Price & P&L */}
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">Current Price</p>
+                      <p className="font-semibold text-lg">
+                        {trade.current_price ? `$${trade.current_price.toFixed(2)}` : '—'}
+                      </p>
+                    </div>
+                    
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500">Unrealized P&L</p>
+                      {trade.live_pnl !== undefined ? (
+                        <>
+                          <p className={`font-semibold ${trade.live_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {trade.live_pnl >= 0 ? '+' : ''}${trade.live_pnl.toFixed(2)}
+                          </p>
+                          <p className={`text-xs ${trade.live_pnl_percent! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {trade.live_pnl_percent! >= 0 ? '+' : ''}{trade.live_pnl_percent?.toFixed(2)}%
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-slate-400">—</p>
+                      )}
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Entry: ${trade.entry_price.toFixed(2)}</p>
+                      <p className="text-xs">
+                        <span className="text-green-600">↑${trade.target_price.toFixed(2)}</span>
+                        {' / '}
+                        <span className="text-red-600">↓${trade.stop_loss.toFixed(2)}</span>
+                      </p>
+                    </div>
+                    
+                    <div className="text-right">
+                      <p className="text-sm text-slate-500">{trade.units} units</p>
+                      <p className="text-xs text-slate-400">{trade.entry_date}</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setSelectedTrade(trade)
+                        setCloseTrade({ 
+                          exit_price: trade.current_price?.toString() || trade.entry_price.toString(), 
+                          exit_reason: '', 
+                          lessons_learned: '' 
+                        })
+                        setShowCloseTradeModal(true)
+                      }}
+                      className="btn-primary text-sm"
+                    >
+                      Close Trade
+                    </button>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">Entry: ${trade.entry_price.toFixed(2)}</p>
-                    <p className="text-sm">
-                      <span className="text-green-600">↑${trade.target_price.toFixed(2)}</span>
-                      {' / '}
-                      <span className="text-red-600">↓${trade.stop_loss.toFixed(2)}</span>
+                  {trade.entry_reason && (
+                    <p className="text-sm text-slate-600 mt-2 pt-2 border-t border-slate-200">
+                      <strong>Entry reason:</strong> {trade.entry_reason}
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">{trade.units} units</p>
-                    <p className="text-sm text-slate-500">{trade.entry_date}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedTrade(trade)
-                      setCloseTrade({ exit_price: trade.entry_price.toString(), exit_reason: '', lessons_learned: '' })
-                      setShowCloseTradeModal(true)
-                    }}
-                    className="btn-primary text-sm"
-                  >
-                    Close Trade
-                  </button>
+                  )}
                 </div>
-                {trade.entry_reason && (
-                  <p className="text-sm text-slate-600 mt-2 pt-2 border-t border-slate-200">
-                    <strong>Entry reason:</strong> {trade.entry_reason}
-                  </p>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -972,6 +1164,11 @@ export default function TradingJournalPage() {
                     <p className="font-semibold text-red-600">${selectedTrade.stop_loss.toFixed(2)}</p>
                   </div>
                 </div>
+                {selectedTrade.current_price && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <p className="text-sm text-slate-500">Current Price: <span className="font-semibold">${selectedTrade.current_price.toFixed(2)}</span></p>
+                  </div>
+                )}
               </div>
 
               <div>
