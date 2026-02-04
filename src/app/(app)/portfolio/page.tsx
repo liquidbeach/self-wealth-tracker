@@ -11,14 +11,16 @@ import {
   Trash2,
   Upload,
   Wallet,
-  MoreHorizontal
+  MoreHorizontal,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react'
 import AddHoldingModal from '@/components/AddHoldingModal'
 import AddLotModal from '@/components/AddLotModal'
 import EditHoldingModal from '@/components/EditHoldingModal'
 import CashBalanceModal from '@/components/CashBalanceModal'
 import ImportDataModal from '@/components/ImportDataModal'
-import RefreshPricesButton from '@/components/RefreshPricesButton'
 
 interface Lot {
   id: string
@@ -37,10 +39,14 @@ interface Holding {
   asset_type: string
   sector: string | null
   investment_style: string | null
-  current_price: number | null
+  current_price: number | null // from database (manual override)
   notes: string | null
   thesis: string | null
   lots: Lot[]
+  // Live data
+  live_price?: number
+  live_change?: number
+  live_change_percent?: number
 }
 
 interface CashBalance {
@@ -50,12 +56,37 @@ interface CashBalance {
   balance: number
 }
 
+interface PortfolioSummary {
+  totalCost: number
+  totalValue: number
+  totalPnL: number
+  totalPnLPercent: number
+  holdingsCount: number
+}
+
+// Fetch live price from Yahoo Finance
+async function fetchLivePrice(symbol: string): Promise<{ price: number; change: number; changePercent: number } | null> {
+  try {
+    const response = await fetch(`/api/quote?symbol=${symbol}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return {
+      price: data.price || 0,
+      change: data.change || 0,
+      changePercent: data.changePercent || 0,
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function PortfolioPage() {
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [cashBalances, setCashBalances] = useState<CashBalance[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedHoldings, setExpandedHoldings] = useState<Set<string>>(new Set())
+  const [refreshingPrices, setRefreshingPrices] = useState(false)
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null)
+  const [expandedHoldings, setExpandedHoldings] = useState<Set<string>>(new Set())
   
   // Modal states
   const [showAddHolding, setShowAddHolding] = useState(false)
@@ -66,7 +97,77 @@ export default function PortfolioPage() {
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null)
   const [showMenu, setShowMenu] = useState(false)
 
+  // Portfolio summary
+  const [summary, setSummary] = useState<PortfolioSummary>({
+    totalCost: 0,
+    totalValue: 0,
+    totalPnL: 0,
+    totalPnLPercent: 0,
+    holdingsCount: 0,
+  })
+
+  // Refresh live prices for all holdings
+  const refreshLivePrices = useCallback(async (holdingsToUpdate: Holding[]) => {
+    if (holdingsToUpdate.length === 0) return holdingsToUpdate
+
+    setRefreshingPrices(true)
+    
+    const updatedHoldings = await Promise.all(
+      holdingsToUpdate.map(async (holding) => {
+        // Skip if no lots (no units to value)
+        const lots = holding.lots || []
+        if (lots.length === 0) return holding
+        
+        const liveData = await fetchLivePrice(holding.ticker)
+        if (!liveData) return holding
+        
+        return {
+          ...holding,
+          live_price: liveData.price,
+          live_change: liveData.change,
+          live_change_percent: liveData.changePercent,
+        }
+      })
+    )
+
+    // Calculate portfolio summary
+    let totalCost = 0
+    let totalValue = 0
+    let holdingsWithValue = 0
+
+    updatedHoldings.forEach(holding => {
+      const lots = holding.lots || []
+      const units = lots.reduce((sum, lot) => sum + Number(lot.units), 0)
+      const cost = lots.reduce((sum, lot) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0)
+      const price = holding.live_price || holding.current_price || 0
+      const value = units * price
+
+      if (units > 0) {
+        totalCost += cost
+        totalValue += value
+        holdingsWithValue++
+      }
+    })
+
+    const totalPnL = totalValue - totalCost
+    const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+    setSummary({
+      totalCost,
+      totalValue,
+      totalPnL,
+      totalPnLPercent,
+      holdingsCount: holdingsWithValue,
+    })
+
+    setLastPriceUpdate(new Date())
+    setRefreshingPrices(false)
+    
+    return updatedHoldings
+  }, [])
+
   const loadData = useCallback(async () => {
+    setLoading(true)
     const supabase = createClient()
     
     // Load holdings with lots
@@ -84,15 +185,23 @@ export default function PortfolioPage() {
       .select('*')
       .order('currency', { ascending: true })
 
-    setHoldings(holdingsData || [])
     setCashBalances(cashData || [])
+    
+    // Fetch live prices
+    const holdingsWithPrices = await refreshLivePrices(holdingsData || [])
+    setHoldings(holdingsWithPrices)
+    
     setLoading(false)
-    setLastPriceUpdate(new Date())
-  }, [])
+  }, [refreshLivePrices])
 
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleRefreshPrices = async () => {
+    const updated = await refreshLivePrices(holdings)
+    setHoldings(updated)
+  }
 
   const toggleExpanded = (holdingId: string) => {
     const newExpanded = new Set(expandedHoldings)
@@ -134,7 +243,9 @@ export default function PortfolioPage() {
     const totalUnits = lots.reduce((sum, lot) => sum + Number(lot.units), 0)
     const totalCost = lots.reduce((sum, lot) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0)
     const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
-    const currentPrice = holding.current_price || avgPrice
+    
+    // Use live price if available, otherwise fall back to database price
+    const currentPrice = holding.live_price || holding.current_price || 0
     const currentValue = totalUnits * currentPrice
     const gainLoss = currentValue - totalCost
     const gainLossPct = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0
@@ -163,29 +274,6 @@ export default function PortfolioPage() {
     })
   }
 
-  // Calculate portfolio totals by currency
-  const calculatePortfolioTotals = () => {
-    const totals: Record<string, { value: number; cost: number; gain: number }> = {
-      AUD: { value: 0, cost: 0, gain: 0 },
-      USD: { value: 0, cost: 0, gain: 0 },
-      INR: { value: 0, cost: 0, gain: 0 }
-    }
-
-    holdings.forEach(holding => {
-      const stats = calculateHoldingStats(holding)
-      const currency = holding.currency
-      if (totals[currency]) {
-        totals[currency].value += stats.currentValue
-        totals[currency].cost += stats.totalCost
-        totals[currency].gain += stats.gainLoss
-      }
-    })
-
-    return totals
-  }
-
-  const portfolioTotals = calculatePortfolioTotals()
-
   // Group holdings by currency
   const holdingsByCurrency = holdings.reduce((acc, holding) => {
     const currency = holding.currency
@@ -193,20 +281,6 @@ export default function PortfolioPage() {
     acc[currency].push(holding)
     return acc
   }, {} as Record<string, Holding[]>)
-
-  // Define column widths for consistent alignment
-  const colWidths = {
-    expand: 'w-10',
-    holding: 'w-[220px]',
-    type: 'w-[100px]',
-    firstBuy: 'w-[120px]',
-    units: 'w-[100px]',
-    avgPrice: 'w-[100px]',
-    current: 'w-[100px]',
-    value: 'w-[120px]',
-    gainLoss: 'w-[100px]',
-    actions: 'w-[80px]'
-  }
 
   return (
     <div className="space-y-6">
@@ -217,7 +291,6 @@ export default function PortfolioPage() {
           <p className="text-slate-500">Track your holdings and performance</p>
         </div>
         <div className="flex items-center gap-2">
-          <RefreshPricesButton onSuccess={loadData} />
           <div className="relative">
             <button 
               onClick={() => setShowMenu(!showMenu)}
@@ -263,86 +336,110 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Portfolio Summary Cards */}
+      {/* Portfolio Summary - Live */}
+      {summary.holdingsCount > 0 && (
+        <div className="card bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              {summary.totalPnL >= 0 ? (
+                <TrendingUp className="w-5 h-5" />
+              ) : (
+                <TrendingDown className="w-5 h-5" />
+              )}
+              Portfolio Summary — Live
+            </h2>
+            <div className="flex items-center gap-3">
+              {lastPriceUpdate && (
+                <span className="text-xs text-primary-200">
+                  Updated {lastPriceUpdate.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={handleRefreshPrices}
+                disabled={refreshingPrices}
+                className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${refreshingPrices ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-primary-200 text-sm">Total Cost</p>
+              <p className="text-xl font-bold">${summary.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Current Value</p>
+              <p className="text-xl font-bold">${summary.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Total P&L</p>
+              <p className={`text-xl font-bold ${summary.totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                {summary.totalPnL >= 0 ? '+' : ''}${summary.totalPnL.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div>
+              <p className="text-primary-200 text-sm">Return</p>
+              <p className={`text-xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                {summary.totalPnLPercent >= 0 ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash balances */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* AUD */}
-        <div className="card">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-sm text-slate-500">🇦🇺 Australian (AUD)</p>
-          </div>
-          <p className="text-2xl font-bold text-slate-900">
-            ${(portfolioTotals.AUD.value + getCashByCurrency('AUD')).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
+          <p className="text-sm text-slate-500 mb-1">Cash (AUD)</p>
+          <p className="text-xl font-bold text-slate-900">
+            ${getCashByCurrency('AUD').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
           </p>
-          <div className="flex justify-between mt-2 text-sm">
-            <span className="text-slate-500">
-              Cash: ${getCashByCurrency('AUD').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-            </span>
-            {portfolioTotals.AUD.cost > 0 && (
-              <span className={portfolioTotals.AUD.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {portfolioTotals.AUD.gain >= 0 ? '+' : ''}
-                {((portfolioTotals.AUD.gain / portfolioTotals.AUD.cost) * 100).toFixed(2)}%
-              </span>
-            )}
-          </div>
         </div>
-
-        {/* USD */}
-        <div className="card">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-sm text-slate-500">🇺🇸 US (USD)</p>
-          </div>
-          <p className="text-2xl font-bold text-slate-900">
-            ${(portfolioTotals.USD.value + getCashByCurrency('USD')).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
+          <p className="text-sm text-slate-500 mb-1">Cash (USD)</p>
+          <p className="text-xl font-bold text-slate-900">
+            ${getCashByCurrency('USD').toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
-          <div className="flex justify-between mt-2 text-sm">
-            <span className="text-slate-500">
-              Cash: ${getCashByCurrency('USD').toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </span>
-            {portfolioTotals.USD.cost > 0 && (
-              <span className={portfolioTotals.USD.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {portfolioTotals.USD.gain >= 0 ? '+' : ''}
-                {((portfolioTotals.USD.gain / portfolioTotals.USD.cost) * 100).toFixed(2)}%
-              </span>
-            )}
-          </div>
         </div>
-
-        {/* INR */}
-        <div className="card">
-          <div className="flex justify-between items-start mb-2">
-            <p className="text-sm text-slate-500">🇮🇳 Indian (INR)</p>
-          </div>
-          <p className="text-2xl font-bold text-slate-900">
-            ₹{(portfolioTotals.INR.value + getCashByCurrency('INR')).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+        <div 
+          className="card cursor-pointer hover:border-primary-300 transition-colors"
+          onClick={() => setShowCashBalance(true)}
+        >
+          <p className="text-sm text-slate-500 mb-1">Cash (INR)</p>
+          <p className="text-xl font-bold text-slate-900">
+            ₹{getCashByCurrency('INR').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </p>
-          <div className="flex justify-between mt-2 text-sm">
-            <span className="text-slate-500">
-              Cash: ₹{getCashByCurrency('INR').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </span>
-            {portfolioTotals.INR.cost > 0 && (
-              <span className={portfolioTotals.INR.gain >= 0 ? 'text-green-600' : 'text-red-600'}>
-                {portfolioTotals.INR.gain >= 0 ? '+' : ''}
-                {((portfolioTotals.INR.gain / portfolioTotals.INR.cost) * 100).toFixed(2)}%
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
       {/* Holdings */}
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-900">Holdings</h3>
-          {lastPriceUpdate && (
-            <span className="text-xs text-slate-400">
-              Prices as of {lastPriceUpdate.toLocaleTimeString()}
-            </span>
+          {holdings.length > 0 && (
+            <button
+              onClick={handleRefreshPrices}
+              disabled={refreshingPrices}
+              className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshingPrices ? 'animate-spin' : ''}`} />
+              {refreshingPrices ? 'Refreshing...' : 'Refresh Prices'}
+            </button>
           )}
         </div>
         
         {loading ? (
           <div className="text-center py-12 text-slate-400">
-            Loading...
+            <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" />
+            Loading holdings & prices...
           </div>
         ) : holdings.length > 0 ? (
           <div className="space-y-6">
@@ -354,19 +451,19 @@ export default function PortfolioPage() {
                    '🇮🇳 Indian (INR)'}
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full table-fixed">
+                  <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200">
-                        <th className={`${colWidths.expand} text-left py-3 px-2`}></th>
-                        <th className={`${colWidths.holding} text-left py-3 px-2 text-sm font-medium text-slate-500`}>Holding</th>
-                        <th className={`${colWidths.type} text-left py-3 px-2 text-sm font-medium text-slate-500`}>Type</th>
-                        <th className={`${colWidths.firstBuy} text-left py-3 px-2 text-sm font-medium text-slate-500`}>First Buy</th>
-                        <th className={`${colWidths.units} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Units</th>
-                        <th className={`${colWidths.avgPrice} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Avg Price</th>
-                        <th className={`${colWidths.current} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Current</th>
-                        <th className={`${colWidths.value} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Value</th>
-                        <th className={`${colWidths.gainLoss} text-right py-3 px-2 text-sm font-medium text-slate-500`}>Gain/Loss</th>
-                        <th className={`${colWidths.actions} text-right py-3 px-2`}></th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500 w-8"></th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Holding</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Type</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Units</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Avg Cost</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Current</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Today</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Value</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Gain/Loss</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-500 w-20">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -374,7 +471,6 @@ export default function PortfolioPage() {
                         const stats = calculateHoldingStats(holding)
                         const isExpanded = expandedHoldings.has(holding.id)
                         const lots = holding.lots || []
-                        const hasLivePrice = holding.current_price !== null
 
                         return (
                           <>
@@ -383,50 +479,76 @@ export default function PortfolioPage() {
                               className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                               onClick={() => lots.length > 0 && toggleExpanded(holding.id)}
                             >
-                              <td className={`${colWidths.expand} py-3 px-2`}>
+                              <td className="py-3 px-4">
                                 {lots.length > 0 && (
                                   isExpanded ? 
                                     <ChevronDown className="w-4 h-4 text-slate-400" /> : 
                                     <ChevronRight className="w-4 h-4 text-slate-400" />
                                 )}
                               </td>
-                              <td className={`${colWidths.holding} py-3 px-2`}>
+                              <td className="py-3 px-4">
                                 <div>
                                   <p className="font-medium text-slate-900">{holding.ticker}</p>
-                                  <p className="text-sm text-slate-500 truncate">{holding.name}</p>
+                                  <p className="text-sm text-slate-500">{holding.name}</p>
                                 </div>
                               </td>
-                              <td className={`${colWidths.type} py-3 px-2`}>
+                              <td className="py-3 px-4">
                                 <span className="text-sm text-slate-600">{holding.asset_type}</span>
-                              </td>
-                              <td className={`${colWidths.firstBuy} py-3 px-2 text-sm text-slate-600`}>
-                                {stats.firstBuyDate ? formatDate(stats.firstBuyDate) : '-'}
-                              </td>
-                              <td className={`${colWidths.units} py-3 px-2 text-sm text-slate-900 text-right`}>
-                                {stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                                {lots.length > 1 && (
-                                  <span className="text-slate-400 text-xs ml-1">({lots.length})</span>
+                                {holding.investment_style && (
+                                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                                    holding.investment_style === 'Growth' ? 'bg-purple-100 text-purple-700' :
+                                    holding.investment_style === 'Dividend' ? 'bg-green-100 text-green-700' :
+                                    'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {holding.investment_style}
+                                  </span>
                                 )}
                               </td>
-                              <td className={`${colWidths.avgPrice} py-3 px-2 text-sm text-slate-900 text-right`}>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
+                                {stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right">
                                 {formatCurrency(stats.avgPrice, currency)}
                               </td>
-                              <td className={`${colWidths.current} py-3 px-2 text-sm text-right`}>
-                                <span className={hasLivePrice ? 'text-slate-900' : 'text-slate-400'}>
-                                  {formatCurrency(stats.currentPrice, currency)}
-                                </span>
+                              <td className="py-3 px-4 text-sm text-right">
+                                {holding.live_price ? (
+                                  <span className="font-medium text-slate-900">
+                                    {formatCurrency(holding.live_price, currency)}
+                                  </span>
+                                ) : holding.current_price ? (
+                                  <span className="text-slate-500">
+                                    {formatCurrency(holding.current_price, currency)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
                               </td>
-                              <td className={`${colWidths.value} py-3 px-2 text-sm text-slate-900 text-right font-medium`}>
-                                {formatCurrency(stats.currentValue, currency)}
+                              <td className="py-3 px-4 text-sm text-right">
+                                {holding.live_change_percent !== undefined ? (
+                                  <span className={`${holding.live_change_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {holding.live_change_percent >= 0 ? '+' : ''}{holding.live_change_percent.toFixed(2)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
                               </td>
-                              <td className={`${colWidths.gainLoss} py-3 px-2 text-sm text-right font-medium ${
+                              <td className="py-3 px-4 text-sm text-slate-900 text-right font-medium">
+                                {stats.currentPrice > 0 ? formatCurrency(stats.currentValue, currency) : '—'}
+                              </td>
+                              <td className={`py-3 px-4 text-sm text-right font-medium ${
                                 stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                {stats.totalCost > 0 ? (
-                                  `${stats.gainLoss >= 0 ? '+' : ''}${stats.gainLossPct.toFixed(1)}%`
-                                ) : '-'}
+                                {stats.totalCost > 0 && stats.currentPrice > 0 ? (
+                                  <>
+                                    {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(2)}%
+                                    <br />
+                                    <span className="text-xs font-normal">
+                                      {stats.gainLoss >= 0 ? '+' : ''}{formatCurrency(stats.gainLoss, currency)}
+                                    </span>
+                                  </>
+                                ) : '—'}
                               </td>
-                              <td className={`${colWidths.actions} py-3 px-2 text-right`} onClick={(e) => e.stopPropagation()}>
+                              <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleAddLot(holding)}
@@ -448,49 +570,63 @@ export default function PortfolioPage() {
                             {/* Expanded lots */}
                             {isExpanded && lots.length > 0 && (
                               <tr key={`${holding.id}-lots`}>
-                                <td colSpan={10} className="bg-slate-50 px-2 py-3">
-                                  <div className="ml-10">
+                                <td colSpan={10} className="bg-slate-50 px-4 py-3">
+                                  <div className="ml-8">
                                     <p className="text-xs font-medium text-slate-500 uppercase mb-2">Purchase Lots</p>
-                                    <table className="w-full table-fixed">
+                                    <table className="w-full">
                                       <thead>
                                         <tr className="text-xs text-slate-500">
-                                          <th className="w-[120px] text-left py-1 px-2">Date</th>
-                                          <th className="w-[100px] text-right py-1 px-2">Units</th>
-                                          <th className="w-[100px] text-right py-1 px-2">Price</th>
-                                          <th className="w-[120px] text-right py-1 px-2">Cost</th>
-                                          <th className="w-[100px] text-right py-1 px-2">Gain/Loss</th>
-                                          <th className="w-[50px] text-right py-1 px-2"></th>
+                                          <th className="text-left py-1 pr-4">Date</th>
+                                          <th className="text-right py-1 pr-4">Units</th>
+                                          <th className="text-right py-1 pr-4">Price</th>
+                                          <th className="text-right py-1 pr-4">Cost</th>
+                                          <th className="text-right py-1 pr-4">Value</th>
+                                          <th className="text-right py-1 pr-4">Gain/Loss</th>
+                                          <th className="text-left py-1 pr-4">Notes</th>
+                                          <th className="w-8"></th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {lots.map((lot) => {
                                           const lotCost = Number(lot.units) * Number(lot.purchase_price)
-                                          const lotValue = Number(lot.units) * stats.currentPrice
+                                          const currentPrice = holding.live_price || holding.current_price || Number(lot.purchase_price)
+                                          const lotValue = Number(lot.units) * currentPrice
                                           const lotGain = lotValue - lotCost
                                           const lotGainPct = lotCost > 0 ? (lotGain / lotCost) * 100 : 0
 
                                           return (
                                             <tr key={lot.id} className="text-sm border-t border-slate-200">
-                                              <td className="w-[120px] py-2 px-2 text-slate-600">
+                                              <td className="py-2 pr-4 text-slate-600">
                                                 {formatDate(lot.purchase_date)}
                                               </td>
-                                              <td className="w-[100px] py-2 px-2 text-right text-slate-900">
+                                              <td className="py-2 pr-4 text-right text-slate-900">
                                                 {Number(lot.units).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                                               </td>
-                                              <td className="w-[100px] py-2 px-2 text-right text-slate-900">
+                                              <td className="py-2 pr-4 text-right text-slate-900">
                                                 {formatCurrency(Number(lot.purchase_price), currency)}
                                               </td>
-                                              <td className="w-[120px] py-2 px-2 text-right text-slate-900">
+                                              <td className="py-2 pr-4 text-right text-slate-900">
                                                 {formatCurrency(lotCost, currency)}
                                               </td>
-                                              <td className={`w-[100px] py-2 px-2 text-right font-medium ${
+                                              <td className="py-2 pr-4 text-right text-slate-900">
+                                                {holding.live_price || holding.current_price 
+                                                  ? formatCurrency(lotValue, currency)
+                                                  : '—'
+                                                }
+                                              </td>
+                                              <td className={`py-2 pr-4 text-right font-medium ${
                                                 lotGain >= 0 ? 'text-green-600' : 'text-red-600'
                                               }`}>
-                                                {hasLivePrice ? (
-                                                  `${lotGain >= 0 ? '+' : ''}${lotGainPct.toFixed(1)}%`
-                                                ) : '-'}
+                                                {holding.live_price || holding.current_price ? (
+                                                  <>
+                                                    {lotGain >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
+                                                  </>
+                                                ) : '—'}
                                               </td>
-                                              <td className="w-[50px] py-2 px-2 text-right">
+                                              <td className="py-2 pr-4 text-slate-500 text-sm">
+                                                {lot.notes || '—'}
+                                              </td>
+                                              <td className="py-2">
                                                 <button
                                                   onClick={() => handleDeleteLot(lot.id)}
                                                   className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
