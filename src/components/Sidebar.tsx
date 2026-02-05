@@ -7,85 +7,137 @@ import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   Briefcase,
-  Activity,
+  Heart,
   Eye,
-  Shield,
   Search,
+  AlertTriangle,
   TrendingUp,
   BookOpen,
   Settings,
   LogOut,
+  ChevronDown,
+  User,
+  Zap,
 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/portfolio', label: 'Portfolio', icon: Briefcase },
-  { href: '/health', label: 'Health', icon: Activity },
-  { href: '/watchlist', label: 'Watchlist', icon: Eye },
-  { href: '/assessor', label: 'Assessor', icon: Search },
-  { href: '/risk', label: 'Risk', icon: Shield },
-  { href: '/momentum', label: 'Momentum', icon: TrendingUp },
-  { href: '/journal', label: 'Journal', icon: BookOpen, isNew: true },
-  { href: '/settings', label: 'Settings', icon: Settings },
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Portfolio', href: '/portfolio', icon: Briefcase },
+  { name: 'Health', href: '/health', icon: Heart },
+  { name: 'Watchlist', href: '/watchlist', icon: Eye },
+  { name: 'Search', href: '/search', icon: Search, badge: 'NEW' },
+  { name: 'Assessor', href: '/assessor', icon: Zap },
+  { name: 'Risk', href: '/risk', icon: AlertTriangle },
+  { name: 'Momentum', href: '/momentum', icon: TrendingUp },
+  { name: 'Journal', href: '/journal', icon: BookOpen },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    const getUser = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserEmail(user.email || null)
+      }
+    }
+    getUser()
+  }, [])
+
+  const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 min-h-screen flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-slate-200">
-        <h1 className="text-xl font-bold text-slate-900">Self Wealth</h1>
-        <p className="text-xs text-slate-500">Tracker</p>
-      </div>
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-slate-200">
+      <div className="flex flex-col h-full">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-slate-200">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">SW</span>
+            </div>
+            <span className="font-semibold text-slate-900">Self Wealth</span>
+          </Link>
+        </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {navItems.map((item) => {
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          {navigation.map((item) => {
             const isActive = pathname === item.href
-            const Icon = item.icon
             return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                  {item.isNew && (
-                    <span className="ml-auto text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                      NEW
-                    </span>
-                  )}
-                </Link>
-              </li>
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-600' : 'text-slate-400'}`} />
+                {item.name}
+                {item.badge && (
+                  <span className="ml-auto text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
             )
           })}
-        </ul>
-      </nav>
+        </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-slate-200">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          Sign Out
-        </button>
+        {/* User Menu */}
+        <div className="p-4 border-t border-slate-200">
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-slate-600" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium text-slate-900 truncate">
+                  {userEmail || 'User'}
+                </p>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20">
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => setShowUserMenu(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </aside>
   )
