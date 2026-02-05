@@ -118,6 +118,17 @@ export default function PortfolioPage() {
         const lots = holding.lots || []
         if (lots.length === 0) return holding
         
+        // If user has set a manual price in database, use that instead of live price
+        // This allows overriding buggy Yahoo data (like PMGOLD.AX returning USD instead of AUD)
+        if (holding.current_price && holding.current_price > 0) {
+          return {
+            ...holding,
+            live_price: undefined, // Don't show live price
+            live_change: undefined,
+            live_change_percent: undefined,
+          }
+        }
+        
         const liveData = await fetchLivePrice(holding.ticker)
         if (!liveData) return holding
         
