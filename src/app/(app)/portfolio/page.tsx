@@ -247,7 +247,7 @@ export default function PortfolioPage() {
               </>
             )}
           </div>
-          <button onClick={() => setShowAddHolding(true)} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          <button onClick={() => setShowAddHolding(true)} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Add Holding</span>
             <span className="sm:hidden">Add</span>
@@ -255,21 +255,21 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Portfolio Summary Card - CLEAN COLORS */}
+      {/* Portfolio Summary Card - DARK THEME */}
       {summary.holdingsCount > 0 && (
-        <div className={`rounded-xl p-4 ${summary.totalPnL >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div className="bg-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-white">
-              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span className="text-sm font-medium">Portfolio Summary</span>
+            <div className="flex items-center gap-2">
+              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
+              <span className="text-sm font-medium text-white">Portfolio Summary</span>
             </div>
             <div className="flex items-center gap-2">
               {lastPriceUpdate && (
-                <span className="text-xs text-white/80 hidden sm:inline">
+                <span className="text-xs text-slate-400 hidden sm:inline">
                   {lastPriceUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
-              <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded flex items-center gap-1">
+              <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded flex items-center gap-1">
                 <RefreshCw className={`w-3 h-3 ${refreshingPrices ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
@@ -278,29 +278,29 @@ export default function PortfolioPage() {
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <p className="text-xs text-white/80">Cost</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(summary.totalCost)}</p>
+              <p className="text-xs text-slate-400">Total Cost</p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-400">{formatCompact(summary.totalCost)}</p>
             </div>
             <div>
-              <p className="text-xs text-white/80">Value</p>
+              <p className="text-xs text-slate-400">Current Value</p>
               <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(summary.totalValue)}</p>
             </div>
             <div>
-              <p className="text-xs text-white/80">P&L</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">
+              <p className="text-xs text-slate-400">Unrealized P&L</p>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {summary.totalPnL >= 0 ? '+' : ''}{formatCompact(summary.totalPnL)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-white/80">Return</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">
+              <p className="text-xs text-slate-400">Return</p>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {summary.totalPnLPercent >= 0 ? '+' : ''}{summary.totalPnLPercent.toFixed(1)}%
               </p>
             </div>
           </div>
 
           {priceErrors > 0 && (
-            <div className="mt-3 flex items-center gap-2 text-xs bg-white/10 text-white px-2 py-1 rounded">
+            <div className="mt-3 flex items-center gap-2 text-xs bg-amber-900/30 text-amber-300 px-2 py-1 rounded">
               <AlertCircle className="w-3 h-3" />
               <span>{priceErrors} stock(s) couldn't fetch live prices.</span>
             </div>
@@ -310,15 +310,15 @@ export default function PortfolioPage() {
 
       {/* Cash Balances */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-blue-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">Cash (AUD)</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('AUD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-blue-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">Cash (USD)</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('USD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-blue-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">Cash (INR)</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">₹{getCashByCurrency('INR').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
@@ -329,7 +329,7 @@ export default function PortfolioPage() {
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-900">Holdings</h3>
           {holdings.length > 0 && (
-            <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
               <RefreshCw className={`w-3 h-3 ${refreshingPrices ? 'animate-spin' : ''}`} />
               {refreshingPrices ? 'Refreshing...' : 'Refresh'}
             </button>
@@ -370,7 +370,7 @@ export default function PortfolioPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-gray-900 text-sm">{formatCurrency(stats.currentValue, currency)}</p>
-                            <p className={`text-xs font-medium ${stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <p className={`text-xs font-medium ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                               {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                             </p>
                           </div>
@@ -431,13 +431,13 @@ export default function PortfolioPage() {
                                 {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-gray-900">{formatCurrency(stats.currentPrice, currency)}</span>}
                               </td>
                               <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatCurrency(stats.currentValue, currency)}</td>
-                              <td className={`py-2.5 px-4 text-right font-medium ${stats.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <td className={`py-2.5 px-4 text-right font-medium ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                               </td>
                               <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
-                                  <button onClick={() => handleAddLot(holding)} className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Add lot"><Plus className="w-4 h-4" /></button>
-                                  <button onClick={() => handleEditHolding(holding)} className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                                  <button onClick={() => handleAddLot(holding)} className="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Add lot"><Plus className="w-4 h-4" /></button>
+                                  <button onClick={() => handleEditHolding(holding)} className="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Edit"><Edit2 className="w-4 h-4" /></button>
                                 </div>
                               </td>
                             </tr>
@@ -456,7 +456,7 @@ export default function PortfolioPage() {
                                           <div key={lot.id} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
                                             <span className="text-gray-600">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                                             <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                            <span className={`font-medium ${lotGainPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                            <span className={`font-medium ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
                                             <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                                           </div>
                                         )
@@ -482,7 +482,7 @@ export default function PortfolioPage() {
             <p className="text-sm text-gray-400 mb-4">Add your first holding to get started</p>
             <div className="flex justify-center gap-2">
               <button onClick={() => setShowImport(true)} className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Import Data</button>
-              <button onClick={() => setShowAddHolding(true)} className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add Holding</button>
+              <button onClick={() => setShowAddHolding(true)} className="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Add Holding</button>
             </div>
           </div>
         )}

@@ -134,7 +134,7 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
         <div className="text-center">
-          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-emerald-500" />
           <p className="text-sm text-gray-500">Loading dashboard...</p>
         </div>
       </div>
@@ -157,88 +157,88 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Stats Grid - CLEAN COLORS */}
+      {/* Main Stats Grid - DARK THEME MATCHING JOURNAL */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Portfolio Value - Blue */}
-        <div className="bg-blue-600 rounded-xl p-3 sm:p-4 text-white">
+        {/* Portfolio Value - Dark Slate */}
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-blue-100">Portfolio Value</span>
-            <DollarSign className="w-4 h-4 text-blue-200" />
+            <span className="text-xs text-slate-400">Portfolio Value</span>
+            <DollarSign className="w-4 h-4 text-slate-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold">{formatCompact(stats.totalValue)}</p>
-          <p className="text-xs text-blue-200 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(stats.totalValue)}</p>
+          <p className="text-xs text-slate-400 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
         </div>
 
-        {/* Total P&L - Green or Red */}
-        <div className={`rounded-xl p-3 sm:p-4 ${stats.totalPnL >= 0 ? 'bg-green-50 border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'}`}>
+        {/* Gain/Loss - Dark with colored text */}
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-600">Gain/Loss</span>
-            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-green-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
+            <span className="text-xs text-slate-400">Gain/Loss</span>
+            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {stats.totalPnL >= 0 ? '+' : ''}{formatCompact(stats.totalPnL)}
           </p>
-          <p className={`text-xs mt-0.5 font-medium ${stats.totalPnLPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-xs mt-0.5 ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
           </p>
         </div>
 
-        {/* Holdings Count - White */}
-        <Link href="/portfolio" className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-colors">
+        {/* Holdings Count - Dark */}
+        <Link href="/portfolio" className="bg-slate-800 rounded-xl p-3 sm:p-4 hover:bg-slate-700 transition-colors">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-500">Holdings</span>
-            <Briefcase className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-slate-400">Holdings</span>
+            <Briefcase className="w-4 h-4 text-slate-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.holdingsCount}</p>
-          <p className="text-xs text-blue-600 mt-0.5">View portfolio →</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">{stats.holdingsCount}</p>
+          <p className="text-xs text-emerald-400 mt-0.5">View portfolio →</p>
         </Link>
 
-        {/* Watchlist Count - White */}
-        <Link href="/watchlist" className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-colors">
+        {/* Watchlist Count - Dark */}
+        <Link href="/watchlist" className="bg-slate-800 rounded-xl p-3 sm:p-4 hover:bg-slate-700 transition-colors">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-500">Watchlist</span>
-            <Eye className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-slate-400">Watchlist</span>
+            <Eye className="w-4 h-4 text-slate-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.watchlistCount}</p>
-          <p className="text-xs text-blue-600 mt-0.5">View watchlist →</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">{stats.watchlistCount}</p>
+          <p className="text-xs text-emerald-400 mt-0.5">View watchlist →</p>
         </Link>
       </div>
 
       {priceErrors > 0 && (
-        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded-lg px-3 py-2">
           <AlertCircle className="w-4 h-4" />
           <span>{priceErrors} stock(s) couldn't fetch live prices.</span>
         </div>
       )}
 
-      {/* Cash Balances */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-gray-400" />
+      {/* Cash Balances - Dark */}
+      <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-slate-400" />
           Cash Balances
         </h3>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-gray-50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-500">🇦🇺 AUD</p>
-            <p className="text-sm sm:text-base font-bold text-gray-900">${cashBalances.AUD.toLocaleString()}</p>
+          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-slate-400">🇦🇺 AUD</p>
+            <p className="text-sm sm:text-base font-bold text-white">${cashBalances.AUD.toLocaleString()}</p>
           </div>
-          <div className="bg-gray-50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-500">🇺🇸 USD</p>
-            <p className="text-sm sm:text-base font-bold text-gray-900">${cashBalances.USD.toLocaleString()}</p>
+          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-slate-400">🇺🇸 USD</p>
+            <p className="text-sm sm:text-base font-bold text-white">${cashBalances.USD.toLocaleString()}</p>
           </div>
-          <div className="bg-gray-50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-500">🇮🇳 INR</p>
-            <p className="text-sm sm:text-base font-bold text-gray-900">₹{cashBalances.INR.toLocaleString()}</p>
+          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-slate-400">🇮🇳 INR</p>
+            <p className="text-sm sm:text-base font-bold text-white">₹{cashBalances.INR.toLocaleString()}</p>
           </div>
         </div>
       </div>
 
       {/* Performance & Sectors Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Gainers/Losers */}
-        <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-gray-400" />
+        {/* Top Gainers/Losers - Dark */}
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-slate-400" />
             Performance
           </h3>
           
@@ -246,15 +246,15 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {stats.topGainers.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-green-600 uppercase mb-1.5">Top Gainers</p>
+                  <p className="text-xs font-medium text-emerald-400 uppercase mb-1.5">Top Gainers</p>
                   <div className="space-y-1.5">
                     {stats.topGainers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-green-50 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-emerald-900/20 rounded px-2 py-1.5">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{h.ticker}</p>
-                          <p className="text-xs text-gray-500 truncate max-w-[120px]">{h.name}</p>
+                          <p className="text-sm font-medium text-white">{h.ticker}</p>
+                          <p className="text-xs text-slate-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-semibold text-green-600">+{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-semibold text-emerald-400">+{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>
@@ -262,15 +262,15 @@ export default function DashboardPage() {
               )}
               {stats.topLosers.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-red-600 uppercase mb-1.5">Top Losers</p>
+                  <p className="text-xs font-medium text-red-400 uppercase mb-1.5">Top Losers</p>
                   <div className="space-y-1.5">
                     {stats.topLosers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-red-50 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-red-900/20 rounded px-2 py-1.5">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{h.ticker}</p>
-                          <p className="text-xs text-gray-500 truncate max-w-[120px]">{h.name}</p>
+                          <p className="text-sm font-medium text-white">{h.ticker}</p>
+                          <p className="text-xs text-slate-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-semibold text-red-600">{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-semibold text-red-400">{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>
@@ -278,17 +278,17 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-400">
+            <div className="text-center py-6 text-slate-500">
               <Activity className="w-6 h-6 mx-auto mb-1 opacity-50" />
               <p className="text-xs">Add holdings to see performance</p>
             </div>
           )}
         </div>
 
-        {/* Sector Breakdown */}
-        <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-gray-400" />
+        {/* Sector Breakdown - Dark */}
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-slate-400" />
             Sector Allocation
           </h3>
           
@@ -297,17 +297,17 @@ export default function DashboardPage() {
               {stats.sectorBreakdown.map(s => (
                 <div key={s.sector}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs text-gray-700 truncate max-w-[150px]">{s.sector}</span>
-                    <span className="text-xs font-medium text-gray-900">{s.percent.toFixed(0)}%</span>
+                    <span className="text-xs text-slate-300 truncate max-w-[150px]">{s.sector}</span>
+                    <span className="text-xs font-medium text-white">{s.percent.toFixed(0)}%</span>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min(s.percent, 100)}%` }} />
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(s.percent, 100)}%` }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-400">
+            <div className="text-center py-6 text-slate-500">
               <PieChart className="w-6 h-6 mx-auto mb-1 opacity-50" />
               <p className="text-xs">Add holdings to see allocation</p>
             </div>
@@ -315,25 +315,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
+      {/* Quick Actions - Dark */}
+      <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+        <h3 className="text-sm font-semibold text-white mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <Link href="/search" className="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 text-center transition-colors">
-            <Search className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-            <p className="text-xs font-medium text-gray-900">Search</p>
+          <Link href="/search" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
+            <Search className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+            <p className="text-xs font-medium text-white">Search</p>
           </Link>
-          <Link href="/momentum" className="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 text-center transition-colors">
-            <TrendingUp className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-            <p className="text-xs font-medium text-gray-900">Momentum</p>
+          <Link href="/momentum" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
+            <TrendingUp className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+            <p className="text-xs font-medium text-white">Momentum</p>
           </Link>
-          <Link href="/assessor" className="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 text-center transition-colors">
-            <Eye className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-            <p className="text-xs font-medium text-gray-900">Assessor</p>
+          <Link href="/assessor" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
+            <Eye className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+            <p className="text-xs font-medium text-white">Assessor</p>
           </Link>
-          <Link href="/journal" className="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 text-center transition-colors">
-            <BookOpen className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-            <p className="text-xs font-medium text-gray-900">Journal</p>
+          <Link href="/journal" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
+            <BookOpen className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+            <p className="text-xs font-medium text-white">Journal</p>
           </Link>
         </div>
       </div>
