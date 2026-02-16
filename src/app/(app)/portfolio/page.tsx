@@ -255,17 +255,17 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Portfolio Summary Card - DARK THEME */}
+      {/* Portfolio Summary Card - DARK WITH BRIGHT TEXT */}
       {summary.holdingsCount > 0 && (
         <div className="bg-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
+              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-orange-400" />}
               <span className="text-sm font-medium text-white">Portfolio Summary</span>
             </div>
             <div className="flex items-center gap-2">
               {lastPriceUpdate && (
-                <span className="text-xs text-slate-400 hidden sm:inline">
+                <span className="text-xs text-gray-400 hidden sm:inline">
                   {lastPriceUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
@@ -278,29 +278,29 @@ export default function PortfolioPage() {
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <p className="text-xs text-slate-400">Total Cost</p>
-              <p className="text-xl sm:text-2xl font-bold text-emerald-400">{formatCompact(summary.totalCost)}</p>
+              <p className="text-xs text-gray-400">Total Cost</p>
+              <p className="text-xl sm:text-2xl font-bold text-cyan-400">{formatCompact(summary.totalCost)}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Current Value</p>
+              <p className="text-xs text-gray-400">Current Value</p>
               <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(summary.totalValue)}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Unrealized P&L</p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className="text-xs text-gray-400">Unrealized P&L</p>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
                 {summary.totalPnL >= 0 ? '+' : ''}{formatCompact(summary.totalPnL)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">Return</p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className="text-xs text-gray-400">Return</p>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
                 {summary.totalPnLPercent >= 0 ? '+' : ''}{summary.totalPnLPercent.toFixed(1)}%
               </p>
             </div>
           </div>
 
           {priceErrors > 0 && (
-            <div className="mt-3 flex items-center gap-2 text-xs bg-amber-900/30 text-amber-300 px-2 py-1 rounded">
+            <div className="mt-3 flex items-center gap-2 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded">
               <AlertCircle className="w-3 h-3" />
               <span>{priceErrors} stock(s) couldn't fetch live prices.</span>
             </div>
@@ -370,7 +370,7 @@ export default function PortfolioPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-gray-900 text-sm">{formatCurrency(stats.currentValue, currency)}</p>
-                            <p className={`text-xs font-medium ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <p className={`text-xs font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                               {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                             </p>
                           </div>
@@ -431,7 +431,7 @@ export default function PortfolioPage() {
                                 {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-gray-900">{formatCurrency(stats.currentPrice, currency)}</span>}
                               </td>
                               <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatCurrency(stats.currentValue, currency)}</td>
-                              <td className={`py-2.5 px-4 text-right font-medium ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              <td className={`py-2.5 px-4 text-right font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                                 {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                               </td>
                               <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
@@ -456,7 +456,7 @@ export default function PortfolioPage() {
                                           <div key={lot.id} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
                                             <span className="text-gray-600">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                                             <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                            <span className={`font-medium ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                            <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
                                             <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                                           </div>
                                         )

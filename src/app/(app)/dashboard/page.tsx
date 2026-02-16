@@ -157,28 +157,28 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Stats Grid - DARK THEME MATCHING JOURNAL */}
+      {/* Main Stats Grid - BRIGHTER COLORS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Portfolio Value - Dark Slate */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400">Portfolio Value</span>
-            <DollarSign className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-gray-400">Portfolio Value</span>
+            <DollarSign className="w-4 h-4 text-gray-500" />
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(stats.totalValue)}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
         </div>
 
-        {/* Gain/Loss - Dark with colored text */}
-        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+        {/* Gain/Loss - BRIGHT COLORS ON LIGHT BACKGROUND */}
+        <div className={`rounded-xl p-3 sm:p-4 ${stats.totalPnL >= 0 ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-red-50 border-2 border-red-200'}`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400">Gain/Loss</span>
-            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
+            <span className="text-xs text-gray-600">Gain/Loss</span>
+            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-600" /> : <TrendingDown className="w-4 h-4 text-red-600" />}
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {stats.totalPnL >= 0 ? '+' : ''}{formatCompact(stats.totalPnL)}
           </p>
-          <p className={`text-xs mt-0.5 ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
           </p>
         </div>
@@ -186,26 +186,26 @@ export default function DashboardPage() {
         {/* Holdings Count - Dark */}
         <Link href="/portfolio" className="bg-slate-800 rounded-xl p-3 sm:p-4 hover:bg-slate-700 transition-colors">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400">Holdings</span>
-            <Briefcase className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-gray-400">Holdings</span>
+            <Briefcase className="w-4 h-4 text-gray-500" />
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.holdingsCount}</p>
-          <p className="text-xs text-emerald-400 mt-0.5">View portfolio →</p>
+          <p className="text-xs text-cyan-400 mt-0.5">View portfolio →</p>
         </Link>
 
         {/* Watchlist Count - Dark */}
         <Link href="/watchlist" className="bg-slate-800 rounded-xl p-3 sm:p-4 hover:bg-slate-700 transition-colors">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400">Watchlist</span>
-            <Eye className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-gray-400">Watchlist</span>
+            <Eye className="w-4 h-4 text-gray-500" />
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.watchlistCount}</p>
-          <p className="text-xs text-emerald-400 mt-0.5">View watchlist →</p>
+          <p className="text-xs text-cyan-400 mt-0.5">View watchlist →</p>
         </Link>
       </div>
 
       {priceErrors > 0 && (
-        <div className="flex items-center gap-2 text-xs text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
           <AlertCircle className="w-4 h-4" />
           <span>{priceErrors} stock(s) couldn't fetch live prices.</span>
         </div>
@@ -214,20 +214,20 @@ export default function DashboardPage() {
       {/* Cash Balances - Dark */}
       <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-slate-400" />
+          <DollarSign className="w-4 h-4 text-gray-400" />
           Cash Balances
         </h3>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-slate-400">🇦🇺 AUD</p>
+          <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-gray-400">🇦🇺 AUD</p>
             <p className="text-sm sm:text-base font-bold text-white">${cashBalances.AUD.toLocaleString()}</p>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-slate-400">🇺🇸 USD</p>
+          <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-gray-400">🇺🇸 USD</p>
             <p className="text-sm sm:text-base font-bold text-white">${cashBalances.USD.toLocaleString()}</p>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-slate-400">🇮🇳 INR</p>
+          <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
+            <p className="text-xs text-gray-400">🇮🇳 INR</p>
             <p className="text-sm sm:text-base font-bold text-white">₹{cashBalances.INR.toLocaleString()}</p>
           </div>
         </div>
@@ -235,10 +235,10 @@ export default function DashboardPage() {
 
       {/* Performance & Sectors Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Gainers/Losers - Dark */}
+        {/* Top Gainers/Losers - BRIGHT COLORS */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-slate-400" />
+            <Activity className="w-4 h-4 text-gray-400" />
             Performance
           </h3>
           
@@ -246,15 +246,15 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {stats.topGainers.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-emerald-400 uppercase mb-1.5">Top Gainers</p>
+                  <p className="text-xs font-semibold text-emerald-400 uppercase mb-1.5">Top Gainers</p>
                   <div className="space-y-1.5">
                     {stats.topGainers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-emerald-900/20 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-emerald-500/20 border border-emerald-500/30 rounded px-2 py-1.5">
                         <div>
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
-                          <p className="text-xs text-slate-400 truncate max-w-[120px]">{h.name}</p>
+                          <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-semibold text-emerald-400">+{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-bold text-emerald-400">+{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>
@@ -262,15 +262,15 @@ export default function DashboardPage() {
               )}
               {stats.topLosers.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-red-400 uppercase mb-1.5">Top Losers</p>
+                  <p className="text-xs font-semibold text-orange-400 uppercase mb-1.5">Top Losers</p>
                   <div className="space-y-1.5">
                     {stats.topLosers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-red-900/20 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-orange-500/20 border border-orange-500/30 rounded px-2 py-1.5">
                         <div>
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
-                          <p className="text-xs text-slate-400 truncate max-w-[120px]">{h.name}</p>
+                          <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-semibold text-red-400">{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-bold text-orange-400">{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>
@@ -278,7 +278,7 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="text-center py-6 text-slate-500">
+            <div className="text-center py-6 text-gray-500">
               <Activity className="w-6 h-6 mx-auto mb-1 opacity-50" />
               <p className="text-xs">Add holdings to see performance</p>
             </div>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
         {/* Sector Breakdown - Dark */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-slate-400" />
+            <PieChart className="w-4 h-4 text-gray-400" />
             Sector Allocation
           </h3>
           
@@ -297,17 +297,17 @@ export default function DashboardPage() {
               {stats.sectorBreakdown.map(s => (
                 <div key={s.sector}>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs text-slate-300 truncate max-w-[150px]">{s.sector}</span>
-                    <span className="text-xs font-medium text-white">{s.percent.toFixed(0)}%</span>
+                    <span className="text-xs text-gray-300 truncate max-w-[150px]">{s.sector}</span>
+                    <span className="text-xs font-semibold text-white">{s.percent.toFixed(0)}%</span>
                   </div>
-                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(s.percent, 100)}%` }} />
+                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(s.percent, 100)}%` }} />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-6 text-slate-500">
+            <div className="text-center py-6 text-gray-500">
               <PieChart className="w-6 h-6 mx-auto mb-1 opacity-50" />
               <p className="text-xs">Add holdings to see allocation</p>
             </div>
@@ -319,20 +319,20 @@ export default function DashboardPage() {
       <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
         <h3 className="text-sm font-semibold text-white mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <Link href="/search" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
-            <Search className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+          <Link href="/search" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <Search className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Search</p>
           </Link>
-          <Link href="/momentum" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
-            <TrendingUp className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+          <Link href="/momentum" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <TrendingUp className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Momentum</p>
           </Link>
-          <Link href="/assessor" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
-            <Eye className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+          <Link href="/assessor" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <Eye className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Assessor</p>
           </Link>
-          <Link href="/journal" className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 text-center transition-colors">
-            <BookOpen className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+          <Link href="/journal" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <BookOpen className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Journal</p>
           </Link>
         </div>
