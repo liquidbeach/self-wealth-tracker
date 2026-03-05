@@ -475,12 +475,12 @@ export default function PortfolioPage() {
                               return (
                                 <tr key={lot.id} className="bg-gray-50/50 text-xs">
                                   <td></td>
-                                  <td className="py-1.5 px-4 text-gray-500">
-                                    {Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}
+                                  <td className="py-1.5 px-4 text-gray-400">
+                                    {new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}
                                   </td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{Number(lot.units).toLocaleString()}</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(Number(lot.purchase_price), currency)}</td>
-                                  <td className="py-1.5 px-4 text-right text-gray-400">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                                  <td className="py-1.5 px-4 text-right text-gray-300">—</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(lotValue, currency)}</td>
                                   <td className={`py-1.5 px-4 text-right font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
