@@ -255,7 +255,7 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Portfolio Summary Card - DARK WITH BRIGHT TEXT */}
+      {/* Portfolio Summary Card - DARK THEME SLATE-800 */}
       {summary.holdingsCount > 0 && (
         <div className="bg-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -308,18 +308,18 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      {/* Cash Balances */}
+      {/* Cash Balances - Simplified Labels */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
-          <p className="text-xs text-gray-500 mb-0.5">Cash (AUD)</p>
+          <p className="text-xs text-gray-500 mb-0.5">AUD</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('AUD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
-          <p className="text-xs text-gray-500 mb-0.5">Cash (USD)</p>
+          <p className="text-xs text-gray-500 mb-0.5">USD</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('USD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
-          <p className="text-xs text-gray-500 mb-0.5">Cash (INR)</p>
+          <p className="text-xs text-gray-500 mb-0.5">INR</p>
           <p className="text-base sm:text-lg font-bold text-gray-900">₹{getCashByCurrency('INR').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
       </div>
@@ -383,6 +383,29 @@ export default function PortfolioPage() {
                               <div><p className="text-gray-500">Avg Cost</p><p className="font-medium text-gray-900">{formatCurrency(stats.avgPrice, currency)}</p></div>
                               <div><p className="text-gray-500">Current</p><p className="font-medium text-gray-900">{formatCurrency(stats.currentPrice, currency)}</p></div>
                             </div>
+                            
+                            {/* Purchase Lots - ALIGNED UNDER STOCK NAME */}
+                            {lots.length > 0 && (
+                              <div className="mb-3">
+                                <p className="text-xs font-medium text-gray-500 uppercase mb-2">Purchase Lots</p>
+                                <div className="space-y-1 text-xs">
+                                  {lots.map((lot) => {
+                                    const lotCost = Number(lot.units) * Number(lot.purchase_price)
+                                    const lotValue = Number(lot.units) * stats.currentPrice
+                                    const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
+                                    
+                                    return (
+                                      <div key={lot.id} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
+                                        <span className="text-gray-600">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                                        <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
+                                        <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            
                             <div className="flex gap-2">
                               <button onClick={(e) => { e.stopPropagation(); handleAddLot(holding) }} className="flex-1 text-xs py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50">+ Add Lot</button>
                               <button onClick={(e) => { e.stopPropagation(); handleEditHolding(holding) }} className="flex-1 text-xs py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50">Edit</button>
@@ -441,10 +464,12 @@ export default function PortfolioPage() {
                                 </div>
                               </td>
                             </tr>
+                            {/* LOTS ALIGNED UNDER STOCK NAME COLUMN */}
                             {isExpanded && lots.length > 0 && (
                               <tr key={`${holding.id}-lots`}>
-                                <td colSpan={8} className="bg-gray-50/50 px-4 py-3">
-                                  <div className="ml-6 text-xs">
+                                <td></td>
+                                <td colSpan={7} className="bg-gray-50/50 px-4 py-3">
+                                  <div className="text-xs">
                                     <p className="font-medium text-gray-500 uppercase mb-2">Purchase Lots</p>
                                     <div className="space-y-1">
                                       {lots.map((lot) => {

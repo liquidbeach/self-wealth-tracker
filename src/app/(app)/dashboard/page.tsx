@@ -14,6 +14,7 @@ import {
   Search,
   BookOpen,
   AlertCircle,
+  Calculator,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -157,7 +158,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Stats Grid - BRIGHTER COLORS */}
+      {/* Main Stats Grid - ALL SLATE-800 CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Portfolio Value - Dark Slate */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
@@ -169,16 +170,16 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
         </div>
 
-        {/* Gain/Loss - BRIGHT COLORS ON LIGHT BACKGROUND */}
-        <div className={`rounded-xl p-3 sm:p-4 ${stats.totalPnL >= 0 ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-red-50 border-2 border-red-200'}`}>
+        {/* Gain/Loss - Dark Slate with colored text */}
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-600">Gain/Loss</span>
-            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-600" /> : <TrendingDown className="w-4 h-4 text-red-600" />}
+            <span className="text-xs text-gray-400">Gain/Loss</span>
+            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-orange-400" />}
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
             {stats.totalPnL >= 0 ? '+' : ''}{formatCompact(stats.totalPnL)}
           </p>
-          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
           </p>
         </div>
@@ -219,15 +220,15 @@ export default function DashboardPage() {
         </h3>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-400">🇦🇺 AUD</p>
+            <p className="text-xs text-gray-400">AUD</p>
             <p className="text-sm sm:text-base font-bold text-white">${cashBalances.AUD.toLocaleString()}</p>
           </div>
           <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-400">🇺🇸 USD</p>
+            <p className="text-xs text-gray-400">USD</p>
             <p className="text-sm sm:text-base font-bold text-white">${cashBalances.USD.toLocaleString()}</p>
           </div>
           <div className="bg-slate-700 rounded-lg p-2 sm:p-3 text-center">
-            <p className="text-xs text-gray-400">🇮🇳 INR</p>
+            <p className="text-xs text-gray-400">INR</p>
             <p className="text-sm sm:text-base font-bold text-white">₹{cashBalances.INR.toLocaleString()}</p>
           </div>
         </div>
@@ -318,7 +319,7 @@ export default function DashboardPage() {
       {/* Quick Actions - Dark */}
       <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
         <h3 className="text-sm font-semibold text-white mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
           <Link href="/search" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
             <Search className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Search</p>
@@ -334,6 +335,10 @@ export default function DashboardPage() {
           <Link href="/journal" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
             <BookOpen className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Journal</p>
+          </Link>
+          <Link href="/cgt" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <Calculator className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
+            <p className="text-xs font-medium text-white">CGT</p>
           </Link>
         </div>
       </div>
