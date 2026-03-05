@@ -174,12 +174,12 @@ export default function DashboardPage() {
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-gray-400">Gain/Loss</span>
-            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-orange-400" />}
+            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
             {stats.totalPnL >= 0 ? '+' : ''}{formatCompact(stats.totalPnL)}
           </p>
-          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
           </p>
         </div>
@@ -263,15 +263,15 @@ export default function DashboardPage() {
               )}
               {stats.topLosers.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-orange-400 uppercase mb-1.5">Top Losers</p>
+                  <p className="text-xs font-semibold text-red-500 uppercase mb-1.5">Top Losers</p>
                   <div className="space-y-1.5">
                     {stats.topLosers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-orange-500/20 border border-orange-500/30 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-red-500/20 border border-red-500/30 rounded px-2 py-1.5">
                         <div>
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
                           <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-bold text-orange-400">{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-bold text-red-500">{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>

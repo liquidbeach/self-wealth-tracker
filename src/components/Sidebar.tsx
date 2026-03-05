@@ -20,6 +20,7 @@ import {
   Zap,
   Menu,
   X,
+  Calculator,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Momentum', href: '/momentum', icon: TrendingUp },
   { name: 'Assessor', href: '/assessor', icon: Zap },
   { name: 'Journal', href: '/journal', icon: BookOpen },
+  { name: 'CGT Tracker', href: '/cgt', icon: Calculator },
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'Health', href: '/health', icon: Heart },
   { name: 'Risk', href: '/risk', icon: AlertTriangle },

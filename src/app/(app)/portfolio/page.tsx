@@ -260,7 +260,7 @@ export default function PortfolioPage() {
         <div className="bg-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-orange-400" />}
+              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
               <span className="text-sm font-medium text-white">Portfolio Summary</span>
             </div>
             <div className="flex items-center gap-2">
@@ -287,13 +287,13 @@ export default function PortfolioPage() {
             </div>
             <div>
               <p className="text-xs text-gray-400">Unrealized P&L</p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
                 {summary.totalPnL >= 0 ? '+' : ''}{formatCompact(summary.totalPnL)}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-400">Return</p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
                 {summary.totalPnLPercent >= 0 ? '+' : ''}{summary.totalPnLPercent.toFixed(1)}%
               </p>
             </div>
@@ -370,7 +370,7 @@ export default function PortfolioPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-gray-900 text-sm">{formatCurrency(stats.currentValue, currency)}</p>
-                            <p className={`text-xs font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                            <p className={`text-xs font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                               {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                             </p>
                           </div>
@@ -384,21 +384,23 @@ export default function PortfolioPage() {
                               <div><p className="text-gray-500">Current</p><p className="font-medium text-gray-900">{formatCurrency(stats.currentPrice, currency)}</p></div>
                             </div>
                             
-                            {/* Purchase Lots - ALIGNED UNDER STOCK NAME */}
+                            {/* Purchase Lots - Mobile */}
                             {lots.length > 0 && (
                               <div className="mb-3">
                                 <p className="text-xs font-medium text-gray-500 uppercase mb-2">Purchase Lots</p>
-                                <div className="space-y-1 text-xs">
+                                <div className="space-y-1.5 text-xs">
                                   {lots.map((lot) => {
                                     const lotCost = Number(lot.units) * Number(lot.purchase_price)
                                     const lotValue = Number(lot.units) * stats.currentPrice
                                     const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
                                     
                                     return (
-                                      <div key={lot.id} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
-                                        <span className="text-gray-600">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
-                                        <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                        <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                      <div key={lot.id} className="flex items-center py-1 border-b border-gray-100 last:border-0">
+                                        <div className="flex-1">
+                                          <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
+                                          <span className="text-gray-400 ml-2">({new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })})</span>
+                                        </div>
+                                        <span className={`font-semibold ml-2 ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
                                       </div>
                                     )
                                   })}
@@ -454,7 +456,7 @@ export default function PortfolioPage() {
                                 {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-gray-900">{formatCurrency(stats.currentPrice, currency)}</span>}
                               </td>
                               <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatCurrency(stats.currentValue, currency)}</td>
-                              <td className={`py-2.5 px-4 text-right font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                              <td className={`py-2.5 px-4 text-right font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                 {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                               </td>
                               <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
@@ -464,33 +466,31 @@ export default function PortfolioPage() {
                                 </div>
                               </td>
                             </tr>
-                            {/* LOTS ALIGNED UNDER STOCK NAME COLUMN */}
-                            {isExpanded && lots.length > 0 && (
-                              <tr key={`${holding.id}-lots`}>
-                                <td></td>
-                                <td colSpan={7} className="bg-gray-50/50 px-4 py-3">
-                                  <div className="text-xs">
-                                    <p className="font-medium text-gray-500 uppercase mb-2">Purchase Lots</p>
-                                    <div className="space-y-1">
-                                      {lots.map((lot) => {
-                                        const lotCost = Number(lot.units) * Number(lot.purchase_price)
-                                        const lotValue = Number(lot.units) * stats.currentPrice
-                                        const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
-                                        
-                                        return (
-                                          <div key={lot.id} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
-                                            <span className="text-gray-600">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
-                                            <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                            <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
-                                            <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
+                            {/* LOTS ROW - ALIGNED WITH TABLE COLUMNS */}
+                            {isExpanded && lots.length > 0 && lots.map((lot) => {
+                              const lotCost = Number(lot.units) * Number(lot.purchase_price)
+                              const lotValue = Number(lot.units) * stats.currentPrice
+                              const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
+                              
+                              return (
+                                <tr key={lot.id} className="bg-gray-50/50 text-xs">
+                                  <td></td>
+                                  <td className="py-1.5 px-4 text-gray-500">
+                                    {Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}
+                                  </td>
+                                  <td className="py-1.5 px-4 text-right text-gray-500">{Number(lot.units).toLocaleString()}</td>
+                                  <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(Number(lot.purchase_price), currency)}</td>
+                                  <td className="py-1.5 px-4 text-right text-gray-400">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                                  <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(lotValue, currency)}</td>
+                                  <td className={`py-1.5 px-4 text-right font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
+                                  </td>
+                                  <td className="py-1.5 px-4 text-right">
+                                    <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </>
                         )
                       })}
