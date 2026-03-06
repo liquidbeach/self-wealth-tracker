@@ -30,6 +30,27 @@ interface DashboardStats {
   sectorBreakdown: { sector: string; value: number; percent: number }[]
 }
 
+// Exchange rates to AUD (fallback values, will be fetched live)
+const DEFAULT_RATES: Record<string, number> = {
+  AUD: 1,
+  USD: 1.55,  // 1 USD = 1.55 AUD approx
+  INR: 0.019, // 1 INR = 0.019 AUD approx
+}
+
+async function fetchExchangeRates(): Promise<Record<string, number>> {
+  try {
+    // Try to fetch live rates - you can replace with your preferred API
+    const response = await fetch('/api/exchange-rates')
+    if (response.ok) {
+      const data = await response.json()
+      return { AUD: 1, USD: data.USD_AUD || DEFAULT_RATES.USD, INR: data.INR_AUD || DEFAULT_RATES.INR }
+    }
+  } catch {
+    // Fall back to defaults
+  }
+  return DEFAULT_RATES
+}
+
 async function fetchLivePrice(symbol: string): Promise<{ price: number } | null> {
   try {
     const response = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`)
@@ -47,6 +68,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [priceErrors, setPriceErrors] = useState(0)
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES)
   const [stats, setStats] = useState<DashboardStats>({
     totalCost: 0, totalValue: 0, totalPnL: 0, totalPnLPercent: 0,
     holdingsCount: 0, watchlistCount: 0, topGainers: [], topLosers: [], sectorBreakdown: [],
@@ -55,6 +77,10 @@ export default function DashboardPage() {
 
   const loadDashboard = useCallback(async () => {
     const supabase = createClient()
+    
+    // Fetch exchange rates first
+    const rates = await fetchExchangeRates()
+    setExchangeRates(rates)
     
     const { data: holdingsData } = await supabase.from('holdings').select(`*, lots (units, purchase_price)`)
     const { count: watchlistCount } = await supabase.from('watchlist').select('*', { count: 'exact', head: true })
@@ -80,8 +106,9 @@ export default function DashboardPage() {
         const lots = holding.lots || []
         const units = lots.reduce((sum: number, lot: any) => sum + Number(lot.units), 0)
         const cost = lots.reduce((sum: number, lot: any) => sum + (Number(lot.units) * Number(lot.purchase_price)), 0)
+        const currency = holding.currency || 'AUD'
         
-        if (units === 0) return { ...holding, pnl: 0, pnlPercent: 0, value: 0, cost: 0 }
+        if (units === 0) return { ...holding, pnl: 0, pnlPercent: 0, value: 0, cost: 0, valueAUD: 0, costAUD: 0 }
 
         let price = holding.current_price
         if (!price || price <= 0) {
@@ -93,14 +120,21 @@ export default function DashboardPage() {
         const value = units * price
         const pnl = value - cost
         const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
-        return { ...holding, pnl, pnlPercent, value, cost }
+        
+        // Convert to AUD for totals
+        const rate = rates[currency] || 1
+        const valueAUD = value * rate
+        const costAUD = cost * rate
+        
+        return { ...holding, pnl, pnlPercent, value, cost, valueAUD, costAUD, currency }
       })
     )
 
     setPriceErrors(errorCount)
 
-    const totalCost = holdingsWithPrices.reduce((sum, h) => sum + h.cost, 0)
-    const totalValue = holdingsWithPrices.reduce((sum, h) => sum + h.value, 0)
+    // Calculate totals in AUD
+    const totalCost = holdingsWithPrices.reduce((sum, h) => sum + (h.costAUD || 0), 0)
+    const totalValue = holdingsWithPrices.reduce((sum, h) => sum + (h.valueAUD || 0), 0)
     const totalPnL = totalValue - totalCost
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
 
@@ -163,21 +197,21 @@ export default function DashboardPage() {
         {/* Portfolio Value - Dark Slate */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-400">Portfolio Value</span>
+            <span className="text-xs text-gray-400">Portfolio Value <span className="text-cyan-400">(AUD)</span></span>
             <DollarSign className="w-4 h-4 text-gray-500" />
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(stats.totalValue)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">Cost: {formatCompact(stats.totalCost)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">${stats.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Cost: ${stats.totalCost.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
         </div>
 
         {/* Gain/Loss - Dark Slate with colored text */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-400">Gain/Loss</span>
+            <span className="text-xs text-gray-400">Gain/Loss <span className="text-cyan-400">(AUD)</span></span>
             {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
           </div>
           <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
-            {stats.totalPnL >= 0 ? '+' : ''}{formatCompact(stats.totalPnL)}
+            {stats.totalPnL >= 0 ? '+' : ''}${Math.abs(stats.totalPnL).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </p>
           <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
@@ -266,12 +300,12 @@ export default function DashboardPage() {
                   <p className="text-xs font-semibold text-red-500 uppercase mb-1.5">Top Losers</p>
                   <div className="space-y-1.5">
                     {stats.topLosers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-red-500/20 border border-red-500/30 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-slate-700 border border-slate-600 rounded px-2 py-1.5">
                         <div>
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
                           <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-bold text-red-500">{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-bold text-red-600">{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>

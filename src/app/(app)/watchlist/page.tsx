@@ -81,8 +81,11 @@ export default function WatchlistPage() {
     loadWatchlist()
   }, [loadWatchlist])
 
-  // Search stocks as user types
+  // Search stocks as user types (but not when a stock is already selected)
   useEffect(() => {
+    // Don't search if we already have a selected stock
+    if (selectedStock) return
+
     const searchStocks = async () => {
       if (searchQuery.length < 2) {
         setSearchResults([])
@@ -105,7 +108,7 @@ export default function WatchlistPage() {
 
     const debounce = setTimeout(searchStocks, 400)
     return () => clearTimeout(debounce)
-  }, [searchQuery])
+  }, [searchQuery, selectedStock])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Remove from watchlist?')) return

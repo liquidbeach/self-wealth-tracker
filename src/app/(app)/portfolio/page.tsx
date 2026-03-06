@@ -23,6 +23,26 @@ import EditHoldingModal from '@/components/EditHoldingModal'
 import CashBalanceModal from '@/components/CashBalanceModal'
 import ImportDataModal from '@/components/ImportDataModal'
 
+// Exchange rates to AUD (fallback values)
+const DEFAULT_RATES: Record<string, number> = {
+  AUD: 1,
+  USD: 1.55,
+  INR: 0.019,
+}
+
+async function fetchExchangeRates(): Promise<Record<string, number>> {
+  try {
+    const response = await fetch('/api/exchange-rates')
+    if (response.ok) {
+      const data = await response.json()
+      return { AUD: 1, USD: data.USD_AUD || DEFAULT_RATES.USD, INR: data.INR_AUD || DEFAULT_RATES.INR }
+    }
+  } catch {
+    // Fall back to defaults
+  }
+  return DEFAULT_RATES
+}
+
 interface Lot {
   id: string
   units: number
@@ -97,9 +117,10 @@ export default function PortfolioPage() {
   const [summary, setSummary] = useState<PortfolioSummary>({
     totalCost: 0, totalValue: 0, totalPnL: 0, totalPnLPercent: 0, holdingsCount: 0,
   })
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES)
 
-  const calculateSummary = useCallback((holdingsData: Holding[]) => {
-    let totalCost = 0, totalValue = 0, holdingsWithValue = 0
+  const calculateSummary = useCallback((holdingsData: Holding[], rates: Record<string, number>) => {
+    let totalCostAUD = 0, totalValueAUD = 0, holdingsWithValue = 0
 
     holdingsData.forEach(holding => {
       const lots = holding.lots || []
@@ -108,17 +129,19 @@ export default function PortfolioPage() {
       const avgPrice = units > 0 ? cost / units : 0
       const price = holding.live_price || holding.current_price || avgPrice
       const value = units * price
+      const currency = holding.currency || 'AUD'
+      const rate = rates[currency] || 1
 
       if (units > 0) {
-        totalCost += cost
-        totalValue += value
+        totalCostAUD += cost * rate
+        totalValueAUD += value * rate
         holdingsWithValue++
       }
     })
 
-    const totalPnL = totalValue - totalCost
-    const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-    setSummary({ totalCost, totalValue, totalPnL, totalPnLPercent, holdingsCount: holdingsWithValue })
+    const totalPnL = totalValueAUD - totalCostAUD
+    const totalPnLPercent = totalCostAUD > 0 ? (totalPnL / totalCostAUD) * 100 : 0
+    setSummary({ totalCost: totalCostAUD, totalValue: totalValueAUD, totalPnL, totalPnLPercent, holdingsCount: holdingsWithValue })
   }, [])
 
   const refreshLivePrices = useCallback(async (holdingsToUpdate: Holding[]) => {
@@ -148,25 +171,29 @@ export default function PortfolioPage() {
     setPriceErrors(errorCount)
     setLastPriceUpdate(new Date())
     setRefreshingPrices(false)
-    calculateSummary(updatedHoldings)
     return updatedHoldings
-  }, [calculateSummary])
+  }, [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    
+    // Fetch exchange rates
+    const rates = await fetchExchangeRates()
+    setExchangeRates(rates)
     
     const { data: holdingsData } = await supabase.from('holdings').select(`*, lots (*)`).order('ticker', { ascending: true })
     const { data: cashData } = await supabase.from('cash_balances').select('*').order('currency', { ascending: true })
 
     setCashBalances(cashData || [])
     const initialHoldings = holdingsData || []
-    calculateSummary(initialHoldings)
+    calculateSummary(initialHoldings, rates)
     setHoldings(initialHoldings)
     setLoading(false)
     
     const holdingsWithPrices = await refreshLivePrices(initialHoldings)
     setHoldings(holdingsWithPrices)
+    calculateSummary(holdingsWithPrices, rates)
   }, [refreshLivePrices, calculateSummary])
 
   useEffect(() => { loadData() }, [loadData])
@@ -278,17 +305,17 @@ export default function PortfolioPage() {
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <p className="text-xs text-gray-400">Total Cost</p>
-              <p className="text-xl sm:text-2xl font-bold text-cyan-400">{formatCompact(summary.totalCost)}</p>
+              <p className="text-xs text-gray-400">Total Cost <span className="text-cyan-400">(AUD)</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-cyan-400">${summary.totalCost.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Current Value</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{formatCompact(summary.totalValue)}</p>
+              <p className="text-xs text-gray-400">Current Value <span className="text-cyan-400">(AUD)</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-white">${summary.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Unrealized P&L</p>
+              <p className="text-xs text-gray-400">Unrealized P&L <span className="text-cyan-400">(AUD)</span></p>
               <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
-                {summary.totalPnL >= 0 ? '+' : ''}{formatCompact(summary.totalPnL)}
+                {summary.totalPnL >= 0 ? '+' : ''}${Math.abs(summary.totalPnL).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
