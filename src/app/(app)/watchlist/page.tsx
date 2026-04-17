@@ -25,6 +25,15 @@ interface SearchResult {
   market: string
 }
 
+// Map exchange names to valid market codes
+function getMarketCode(exchange: string): string {
+  const ex = exchange?.toUpperCase() || ''
+  if (ex.includes('ASX') || ex.includes('AUSTRALIA')) return 'ASX'
+  if (ex.includes('NSE') || ex.includes('INDIA') || ex.includes('BSE')) return 'NSE'
+  if (ex.includes('NASDAQ') || ex.includes('NYSE') || ex.includes('US') || ex.includes('AMERICA')) return 'US'
+  return 'US' // Default fallback
+}
+
 async function fetchLivePrice(symbol: string): Promise<{ price: number; changePercent: number } | null> {
   try {
     const response = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`)
@@ -158,7 +167,7 @@ export default function WatchlistPage() {
       user_id: user.id,
       ticker: selectedStock.symbol,
       name: selectedStock.name,
-      market: selectedStock.exchange || 'US',
+      market: getMarketCode(selectedStock.exchange),
       current_price: liveData?.price || null,
     }).select()
 
