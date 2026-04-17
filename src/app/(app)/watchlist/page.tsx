@@ -132,6 +132,21 @@ export default function WatchlistPage() {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
+      alert('Please log in to add stocks to your watchlist')
+      setAddingStock(false)
+      return
+    }
+
+    // Check if already in watchlist
+    const { data: existing } = await supabase
+      .from('watchlist')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('ticker', selectedStock.symbol)
+      .single()
+
+    if (existing) {
+      alert(`${selectedStock.symbol} is already in your watchlist`)
       setAddingStock(false)
       return
     }
@@ -139,18 +154,22 @@ export default function WatchlistPage() {
     // Fetch current price
     const liveData = await fetchLivePrice(selectedStock.symbol)
 
-    const { error } = await supabase.from('watchlist').insert({
+    const { data, error } = await supabase.from('watchlist').insert({
       user_id: user.id,
       ticker: selectedStock.symbol,
       name: selectedStock.name,
       current_price: liveData?.price || null,
-    })
+    }).select()
 
-    if (!error) {
+    if (error) {
+      console.error('Error adding to watchlist:', error)
+      alert(`Failed to add stock: ${error.message}`)
+    } else {
+      console.log('Added to watchlist:', data)
       setShowAddModal(false)
       setSearchQuery('')
       setSelectedStock(null)
-      loadWatchlist()
+      await loadWatchlist()
     }
     
     setAddingStock(false)

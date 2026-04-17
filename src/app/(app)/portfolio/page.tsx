@@ -20,6 +20,7 @@ import {
 import AddHoldingModal from '@/components/AddHoldingModal'
 import AddLotModal from '@/components/AddLotModal'
 import EditHoldingModal from '@/components/EditHoldingModal'
+import EditLotModal from '@/components/EditLotModal'
 import CashBalanceModal from '@/components/CashBalanceModal'
 import ImportDataModal from '@/components/ImportDataModal'
 
@@ -109,9 +110,11 @@ export default function PortfolioPage() {
   const [showAddHolding, setShowAddHolding] = useState(false)
   const [showAddLot, setShowAddLot] = useState(false)
   const [showEditHolding, setShowEditHolding] = useState(false)
+  const [showEditLot, setShowEditLot] = useState(false)
   const [showCashBalance, setShowCashBalance] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null)
+  const [selectedLot, setSelectedLot] = useState<Lot | null>(null)
   const [showMenu, setShowMenu] = useState(false)
 
   const [summary, setSummary] = useState<PortfolioSummary>({
@@ -212,6 +215,7 @@ export default function PortfolioPage() {
 
   const handleAddLot = (holding: Holding) => { setSelectedHolding(holding); setShowAddLot(true) }
   const handleEditHolding = (holding: Holding) => { setSelectedHolding(holding); setShowEditHolding(true) }
+  const handleEditLot = (lot: Lot, holding: Holding) => { setSelectedLot(lot); setSelectedHolding(holding); setShowEditLot(true) }
   
   const handleDeleteLot = async (lotId: string) => {
     if (!confirm('Delete this lot?')) return
@@ -422,12 +426,18 @@ export default function PortfolioPage() {
                                     const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
                                     
                                     return (
-                                      <div key={lot.id} className="flex items-center py-1 border-b border-gray-100 last:border-0">
+                                      <div key={lot.id} className="flex items-center py-1.5 border-b border-gray-100 last:border-0">
                                         <div className="flex-1">
-                                          <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                          <span className="text-gray-400 ml-2">({new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })})</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
+                                            <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                          </div>
+                                          <span className="text-gray-400">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                                         </div>
-                                        <span className={`font-semibold ml-2 ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                        <div className="flex items-center gap-1">
+                                          <button onClick={(e) => { e.stopPropagation(); handleEditLot(lot, holding) }} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                                          <button onClick={(e) => { e.stopPropagation(); handleDeleteLot(lot.id) }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        </div>
                                       </div>
                                     )
                                   })}
@@ -455,10 +465,11 @@ export default function PortfolioPage() {
                         <th className="text-left py-2 px-4 font-medium">Stock</th>
                         <th className="text-right py-2 px-4 font-medium">Units</th>
                         <th className="text-right py-2 px-4 font-medium">Avg Cost</th>
+                        <th className="text-right py-2 px-4 font-medium">Purchase Date</th>
                         <th className="text-right py-2 px-4 font-medium">Current</th>
                         <th className="text-right py-2 px-4 font-medium">Value</th>
                         <th className="text-right py-2 px-4 font-medium">P&L</th>
-                        <th className="text-right py-2 px-4 font-medium w-20"></th>
+                        <th className="text-right py-2 px-4 font-medium w-24"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -466,6 +477,16 @@ export default function PortfolioPage() {
                         const stats = calculateHoldingStats(holding)
                         const lots = holding.lots || []
                         const isExpanded = expandedHoldings.has(holding.id)
+                        
+                        // Calculate purchase date display
+                        const sortedLots = [...lots].sort((a, b) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime())
+                        const firstDate = sortedLots.length > 0 ? new Date(sortedLots[0].purchase_date) : null
+                        const lastDate = sortedLots.length > 1 ? new Date(sortedLots[sortedLots.length - 1].purchase_date) : null
+                        const dateDisplay = firstDate 
+                          ? lastDate && firstDate.getTime() !== lastDate.getTime()
+                            ? `${firstDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })} - ${lastDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}`
+                            : firstDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })
+                          : '—'
 
                         return (
                           <>
@@ -479,6 +500,7 @@ export default function PortfolioPage() {
                               </td>
                               <td className="py-2.5 px-4 text-right text-gray-700">{stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                               <td className="py-2.5 px-4 text-right text-gray-700">{formatCurrency(stats.avgPrice, currency)}</td>
+                              <td className="py-2.5 px-4 text-right text-gray-500 text-xs">{dateDisplay}</td>
                               <td className="py-2.5 px-4 text-right">
                                 {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-gray-900">{formatCurrency(stats.currentPrice, currency)}</span>}
                               </td>
@@ -502,18 +524,22 @@ export default function PortfolioPage() {
                               return (
                                 <tr key={lot.id} className="bg-gray-50/50 text-xs">
                                   <td></td>
-                                  <td className="py-1.5 px-4 text-gray-400">
-                                    {new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}
-                                  </td>
+                                  <td className="py-1.5 px-4 text-gray-400">Lot</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{Number(lot.units).toLocaleString()}</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(Number(lot.purchase_price), currency)}</td>
+                                  <td className="py-1.5 px-4 text-right text-gray-400">
+                                    {new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                  </td>
                                   <td className="py-1.5 px-4 text-right text-gray-300">—</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(lotValue, currency)}</td>
                                   <td className={`py-1.5 px-4 text-right font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                     {lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
                                   </td>
                                   <td className="py-1.5 px-4 text-right">
-                                    <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button onClick={() => handleEditLot(lot, holding)} className="p-1 text-gray-400 hover:text-emerald-600" title="Edit lot"><Edit2 className="w-3 h-3" /></button>
+                                      <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600" title="Delete lot"><Trash2 className="w-3 h-3" /></button>
+                                    </div>
                                   </td>
                                 </tr>
                               )
@@ -544,6 +570,7 @@ export default function PortfolioPage() {
       <AddHoldingModal isOpen={showAddHolding} onClose={() => setShowAddHolding(false)} onSuccess={loadData} />
       <AddLotModal isOpen={showAddLot} onClose={() => { setShowAddLot(false); setSelectedHolding(null) }} onSuccess={loadData} holding={selectedHolding} />
       <EditHoldingModal isOpen={showEditHolding} onClose={() => { setShowEditHolding(false); setSelectedHolding(null) }} onSuccess={loadData} onDelete={loadData} holding={selectedHolding} />
+      <EditLotModal isOpen={showEditLot} onClose={() => { setShowEditLot(false); setSelectedLot(null); setSelectedHolding(null) }} onSuccess={loadData} lot={selectedLot} holding={selectedHolding} />
       <CashBalanceModal isOpen={showCashBalance} onClose={() => setShowCashBalance(false)} onSuccess={loadData} />
       <ImportDataModal isOpen={showImport} onClose={() => setShowImport(false)} onSuccess={loadData} />
     </div>
