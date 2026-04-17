@@ -64,7 +64,7 @@ export default function WatchlistPage() {
     const { data } = await supabase
       .from('watchlist')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('added_at', { ascending: false })
 
     setWatchlist(data || [])
     setLoading(false)
