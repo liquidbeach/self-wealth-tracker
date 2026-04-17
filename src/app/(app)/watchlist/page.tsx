@@ -158,6 +158,7 @@ export default function WatchlistPage() {
       user_id: user.id,
       ticker: selectedStock.symbol,
       name: selectedStock.name,
+      market: selectedStock.exchange || 'US',
       current_price: liveData?.price || null,
     }).select()
 
