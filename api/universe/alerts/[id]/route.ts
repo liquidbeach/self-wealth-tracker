@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 // PATCH /api/universe/alerts/[id] - Update alert (mark as read)
@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const body = await request.json()
     const alertId = params.id
 
@@ -47,7 +47,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const alertId = params.id
 
     const { error } = await supabase
