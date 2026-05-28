@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
           color
         )
       `)
-      .order('ticker', { ascending: true })
+      .order('ticker')
 
     // Filter by status (exclude removed by default)
     if (!includeRemoved) {

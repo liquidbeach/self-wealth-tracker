@@ -9,7 +9,6 @@ export async function GET() {
     const { data, error } = await supabase
       .from('universe_sectors')
       .select('*')
-      .order('name', { ascending: true })
 
     if (error) {
       console.error('Error fetching universe sectors:', error)
