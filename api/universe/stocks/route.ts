@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/universe/stocks - Get all active universe stocks with optional filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     
     const sector = searchParams.get('sector')
@@ -31,11 +31,6 @@ export async function GET(request: NextRequest) {
       query = query.neq('status', 'removed')
     }
 
-    // Filter by sector
-    if (sector && sector !== 'all') {
-      query = query.eq('universe_sectors.slug', sector)
-    }
-
     // Filter by tier
     if (tier && tier !== 'all') {
       query = query.eq('tier', tier)
@@ -59,7 +54,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Filter by sector slug if sector param was provided (need to filter after join)
+    // Filter by sector slug if sector param was provided
     if (sector && sector !== 'all') {
       filteredData = filteredData.filter(stock => 
         stock.universe_sectors?.slug === sector
@@ -76,7 +71,7 @@ export async function GET(request: NextRequest) {
 // POST /api/universe/stocks - Add a new stock to the universe
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const body = await request.json()
 
     const {

@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
 // GET /api/universe/sectors - Get all sectors
 export async function GET() {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
 
     const { data, error } = await supabase
       .from('universe_sectors')

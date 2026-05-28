@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/universe/alerts - Get alerts (unread by default)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const { searchParams } = new URL(request.url)
     
     const includeRead = searchParams.get('includeRead') === 'true'
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           name
         )
       `)
-      .order('severity', { ascending: false }) // red first, then amber, then green
+      .order('severity', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit)
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Count unread alerts by severity for badge display
+    // Count unread alerts by severity
     const unreadCounts = {
       red: data?.filter(a => !a.is_read && a.severity === 'red').length || 0,
       amber: data?.filter(a => !a.is_read && a.severity === 'amber').length || 0,
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 // POST /api/universe/alerts - Create a new alert
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createServerSupabaseClient()
     const body = await request.json()
 
     const {
