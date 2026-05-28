@@ -12,19 +12,9 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const includeRemoved = searchParams.get('includeRemoved') === 'true'
 
-    let query = supabase
-      .from('universe_stocks')
-      .select(`
-        *,
-        sector:universe_sectors (
-          id,
-          name,
-          slug,
-          description,
-          color
-        )
-      `)
-      .order('ticker')
+   let query = supabase
+    .from('universe_stocks')
+    .select('*, universe_sectors(*)')
 
     // Filter by status (exclude removed by default)
     if (!includeRemoved) {
@@ -57,7 +47,7 @@ export async function GET(request: NextRequest) {
     // Filter by sector slug if sector param was provided
     if (sector && sector !== 'all') {
       filteredData = filteredData.filter(stock => 
-        stock.sector?.slug === sector
+        stock.universe_sectors?.slug === sector
       )
     }
 
