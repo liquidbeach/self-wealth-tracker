@@ -5,7 +5,7 @@ import { X, Bell, TrendingUp, TrendingDown, FileText, AlertTriangle, CheckCircle
 interface Alert {
   id: string
   stock_id: string
-  alert_type: 'price_movement' | 'earnings' | 'analyst_change' | 'news' | 'thesis_review' | 'other'
+  alert_type: string
   severity: 'red' | 'amber' | 'green'
   message: string
   source: string | null

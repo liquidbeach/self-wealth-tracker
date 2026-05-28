@@ -299,7 +299,7 @@ export default function UniversePage() {
       <AlertsPanel
         isOpen={showAlerts}
         onClose={() => setShowAlerts(false)}
-        alerts={alerts}
+        alerts={alerts as any}
         onMarkAsRead={handleMarkAsRead}
         onMarkAllAsRead={handleMarkAllAsRead}
       />
