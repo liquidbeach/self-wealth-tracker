@@ -1,136 +1,133 @@
-# Self Wealth Tracker
+# AI Infrastructure Universe - SWT Feature
 
-Personal investment management with Buffett-style stock assessment.
+A curated universe of 37 quality-filtered AI/chip infrastructure stocks across 6 sectors.
 
-## Quick Start
+## Files Included
 
-### 1. Install Dependencies
+```
+app/universe/
+  page.tsx                    — Main universe page
+  components/
+    UniverseHeader.tsx        — Title, stats, search bar, alerts badge
+    SectorTabs.tsx            — 6 sector filter tabs + tier dropdown
+    StockCard.tsx             — Expandable card with thesis, catalysts, risks
+    AlertsPanel.tsx           — Slide-out alerts panel
+    AdminModal.tsx            — Add/Edit stock, Create alert modal
+
+api/universe/
+  stocks/route.ts             — GET all stocks, POST new stock
+  stocks/[id]/route.ts        — GET/PATCH/DELETE individual stock
+  alerts/route.ts             — GET alerts, POST new alert
+  alerts/[id]/route.ts        — PATCH (mark read), DELETE alert
+  sectors/route.ts            — GET all sectors
+
+supabase-universe-migration.sql — Database migration with 37 seed stocks
+```
+
+## Installation
+
+### 1. Copy Files to Your SWT Project
 
 ```bash
-npm install
+# Copy page and components
+cp -r app/universe /path/to/swt/app/
+
+# Copy API routes
+cp -r api/universe /path/to/swt/app/api/
 ```
 
-### 2. Configure Environment Variables
+### 2. Run Database Migration
 
-Copy the example env file:
+1. Go to Supabase Dashboard → SQL Editor
+2. Paste contents of `supabase-universe-migration.sql`
+3. Click "Run"
+
+Verify with:
+```sql
+SELECT COUNT(*) FROM universe_sectors;  -- Should be 6
+SELECT COUNT(*) FROM universe_stocks;   -- Should be 37
+```
+
+### 3. Add Sidebar Navigation
+
+In your sidebar component (e.g., `components/Sidebar.tsx`), add:
+
+```tsx
+import { Globe } from 'lucide-react'
+
+// In your nav items array, add:
+{
+  name: 'AI Universe',
+  href: '/universe',
+  icon: Globe,
+}
+```
+
+Or copy this full nav item JSX:
+
+```tsx
+<Link
+  href="/universe"
+  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+    pathname === '/universe'
+      ? 'bg-emerald-600 text-white'
+      : 'text-gray-600 hover:bg-gray-100'
+  }`}
+>
+  <Globe className="w-5 h-5" />
+  <span>AI Universe</span>
+</Link>
+```
+
+### 4. Deploy
+
 ```bash
-cp .env.local.example .env.local
+git add .
+git commit -m "Add AI Infrastructure Universe feature"
+git push
 ```
 
-Edit `.env.local` and add your Supabase credentials:
-- Go to [Supabase Dashboard](https://supabase.com/dashboard)
-- Select your project
-- Go to **Project Settings** > **API**
-- Copy **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-- Copy **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+## Features
 
-### 3. Run Development Server
+- **37 Quality-Filtered Stocks** across 6 sectors
+- **Sector Filtering** — Silicon, Networking, Equipment, Memory, Power, Cloud
+- **Tier Filtering** — Heavyweights vs Velocity (emerging)
+- **Search** — By ticker, company name, or thesis
+- **Expandable Cards** — Click to see catalysts (green) and risks (red)
+- **Buffett Scanner Integration** — "Run Buffett Scanner" links to `/assessor?ticker=TICKER`
+- **Alerts System** — Create and track alerts by severity (red/amber/green)
+- **Admin Controls** — Add/edit/remove stocks, create manual alerts
 
-```bash
-npm run dev
-```
+## Stock Universe by Sector
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+| Sector | Count | Examples |
+|--------|-------|----------|
+| Silicon & Compute | 8 | NVDA, AMD, AVGO, QCOM, INTC, ARM, MRVL, MPWR |
+| Networking & Interconnect | 6 | CSCO, ANET, CDNS, SNPS, LITE, COHR |
+| Semiconductor Equipment | 6 | ASML, LRCX, AMAT, KLAC, TER, ONTO |
+| Memory & Storage | 5 | MU, WDC, STX, PSTG, NTAP |
+| Power & Cooling | 5 | VRT, ETN, EMR, GNRC, PWR |
+| Cloud & Data Centre Infra | 7 | AMZN, MSFT, GOOGL, ORCL, DLR, EQIX, AMT |
 
-### 4. Create an Account
+## Inclusion/Exclusion Criteria
 
-1. Go to `/signup`
-2. Enter your details
-3. Check your email for confirmation link
-4. Click the link to activate
-5. Log in and start using the app
+**Inclusion:**
+- NYSE/NASDAQ listed
+- Market cap >$5B
+- Profitable (2+ consecutive quarters)
+- Direct/indirect AI infrastructure exposure
+- 50%+ institutional ownership
+- 3+ analyst coverage
 
----
+**Exclusion Triggers:**
+- Market cap drops below $3B
+- Two consecutive revenue decline quarters without catalyst
+- Fundamental thesis broken
+- Delisting/governance red flags
 
-## Deploy to Vercel
+## Quarterly Refresh Schedule
 
-### Option A: Via Vercel Dashboard (Recommended)
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Click "New Project"
-4. Import your GitHub repository
-5. Add Environment Variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-6. Click Deploy
-
-### Option B: Via CLI
-
-```bash
-npm install -g vercel
-vercel
-```
-
-Follow the prompts and add your environment variables.
-
----
-
-## Configure Supabase Auth Redirect
-
-After deploying, update Supabase:
-
-1. Go to Supabase Dashboard > Authentication > URL Configuration
-2. Add your Vercel URL to:
-   - **Site URL**: `https://your-app.vercel.app`
-   - **Redirect URLs**: `https://your-app.vercel.app/auth/callback`
-
----
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── (auth)/           # Login, signup pages
-│   │   ├── login/
-│   │   ├── signup/
-│   │   └── auth/callback/
-│   ├── (app)/            # Main app (protected)
-│   │   ├── dashboard/
-│   │   ├── portfolio/
-│   │   ├── watchlist/
-│   │   ├── assessor/
-│   │   ├── risk/
-│   │   ├── research/
-│   │   └── settings/
-│   ├── layout.tsx
-│   ├── page.tsx
-│   └── globals.css
-├── components/
-│   ├── Sidebar.tsx
-│   └── Header.tsx
-├── lib/
-│   ├── supabase.ts       # Browser client
-│   └── supabase-server.ts # Server client
-└── types/
-    └── database.ts       # TypeScript types
-```
-
----
-
-## Features (Planned)
-
-- [x] Authentication (Email)
-- [x] Dashboard
-- [ ] Portfolio Tracker
-- [ ] Watchlist
-- [ ] Stock Assessor
-- [ ] Risk Management
-- [ ] Research Hub
-
----
-
-## Tech Stack
-
-- **Framework**: Next.js 14 (App Router)
-- **Database**: Supabase (PostgreSQL)
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Charts**: Recharts (coming soon)
-
----
-
-## License
-
-Private - Personal Use
+- **Next refresh:** June 2026
+- Review all positions against inclusion criteria
+- Update market caps, status colors, catalysts/risks
+- Add/remove stocks as needed
