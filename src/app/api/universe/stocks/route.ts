@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       .from('universe_stocks')
       .select(`
         *,
-        universe_sectors (
+        sector:universe_sectors (
           id,
           name,
           slug,
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Filter by sector slug if sector param was provided
     if (sector && sector !== 'all') {
       filteredData = filteredData.filter(stock => 
-        stock.universe_sectors?.slug === sector
+        stock.sector?.slug === sector
       )
     }
 
