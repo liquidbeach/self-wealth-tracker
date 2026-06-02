@@ -16,6 +16,9 @@ import {
   ChevronRight,
   FileText,
   Info,
+  Lock,
+  Unlock,
+  ArrowRight,
 } from 'lucide-react'
 
 // Australian Tax Brackets 2024-25
@@ -75,6 +78,23 @@ interface TaxSummary {
   netCapitalGain: number
 }
 
+interface FYSummaryRecord {
+  id?: string
+  user_id?: string
+  financial_year: string
+  opening_carried_losses: number
+  manual_loss_adjustment: number
+  manual_adjustment_note?: string
+  total_gross_gains: number
+  total_discounts: number
+  total_losses: number
+  losses_applied: number
+  closing_carried_losses: number
+  net_taxable_gain: number
+  is_finalized: boolean
+  finalized_at?: string
+}
+
 export default function CGTPage() {
   const [soldLots, setSoldLots] = useState<SoldLot[]>([])
   const [holdings, setHoldings] = useState<Holding[]>([])
@@ -96,9 +116,52 @@ export default function CGTPage() {
   const [broker, setBroker] = useState<'stake' | 'commsec' | 'cmc' | 'custom'>('stake')
   const [customSellBrokerage, setCustomSellBrokerage] = useState<string>('')
   const [buyBrokerageAdjustment, setBuyBrokerageAdjustment] = useState<string>('')
+  const [regulatoryFees, setRegulatoryFees] = useState<string>('') // SEC, FINRA, etc.
   
   // Tax Estimator State
   const [baseSalary, setBaseSalary] = useState<string>('')
+  
+  // Offset Balance State (persisted to localStorage)
+  const [offsetBalance, setOffsetBalance] = useState<string>('')
+  const [showRealBalance, setShowRealBalance] = useState(false)
+  
+  // FY Tracking State
+  const [fySummaries, setFySummaries] = useState<FYSummaryRecord[]>([])
+  const [selectedFY, setSelectedFY] = useState<string>('')
+  const [manualLossAdjustment, setManualLossAdjustment] = useState<string>('')
+  const [manualAdjustmentNote, setManualAdjustmentNote] = useState<string>('')
+  const [showCarryForward, setShowCarryForward] = useState(true)
+  
+  // Helper: Get FY string from date
+  const getFYFromDate = (date: Date): string => {
+    const year = date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1
+    return `${year}-${year + 1}`
+  }
+  
+  // Helper: Get all FYs with sales
+  const getAllFYs = (): string[] => {
+    const fys = new Set<string>()
+    soldLots.forEach(sale => {
+      const saleDate = new Date(sale.sale_date)
+      fys.add(getFYFromDate(saleDate))
+    })
+    // Always include current FY
+    fys.add(getFYFromDate(new Date()))
+    return Array.from(fys).sort().reverse()
+  }
+  
+  // Load offset balance from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('swt_offset_balance')
+    if (saved) setOffsetBalance(saved)
+  }, [])
+  
+  // Save offset balance to localStorage when it changes
+  useEffect(() => {
+    if (offsetBalance) {
+      localStorage.setItem('swt_offset_balance', offsetBalance)
+    }
+  }, [offsetBalance])
 
   // Calculate sell brokerage based on broker and proceeds
   const calculateSellBrokerage = (proceeds: number, currency: string, rate: number): number => {
@@ -149,8 +212,27 @@ export default function CGTPage() {
       .select('*')
       .order('sale_date', { ascending: false })
     
+    // Load FY summaries
+    const { data: fyData } = await supabase
+      .from('cgt_fy_summary')
+      .select('*')
+      .order('financial_year', { ascending: false })
+    
     setHoldings(holdingsData || [])
     setSoldLots(soldData || [])
+    setFySummaries(fyData || [])
+    
+    // Set selected FY to current FY
+    const currentFY = getFYFromDate(new Date())
+    setSelectedFY(currentFY)
+    
+    // Load manual adjustment for current FY if exists
+    const currentFYRecord = (fyData || []).find((fy: FYSummaryRecord) => fy.financial_year === currentFY)
+    if (currentFYRecord) {
+      setManualLossAdjustment(currentFYRecord.manual_loss_adjustment?.toString() || '')
+      setManualAdjustmentNote(currentFYRecord.manual_adjustment_note || '')
+    }
+    
     setLoading(false)
   }, [])
 
@@ -195,6 +277,110 @@ export default function CGTPage() {
       totalLosses,
       netCapitalGain,
     }
+  }
+
+  // Calculate complete FY summary with carry forward
+  const calculateFYWithCarryForward = (fy: string): FYSummaryRecord => {
+    const salesSummary = calculateTaxSummary(soldLots, fy)
+    
+    // Get prior FY's closing losses (our opening losses)
+    const [startYear] = fy.split('-').map(Number)
+    const priorFY = `${startYear - 1}-${startYear}`
+    const priorFYRecord = fySummaries.find(s => s.financial_year === priorFY)
+    const openingLosses = priorFYRecord?.closing_carried_losses || 0
+    
+    // Get manual adjustment for this FY
+    const thisFYRecord = fySummaries.find(s => s.financial_year === fy)
+    const manualAdj = thisFYRecord?.manual_loss_adjustment || (fy === selectedFY ? parseFloat(manualLossAdjustment) || 0 : 0)
+    
+    // Total available losses
+    const totalAvailableLosses = openingLosses + manualAdj + salesSummary.totalLosses
+    
+    // Net gains after discount
+    const netGainsAfterDiscount = salesSummary.totalGrossGains - salesSummary.totalDiscounts
+    
+    // Apply losses (losses MUST offset gains first)
+    const lossesApplied = Math.min(totalAvailableLosses, netGainsAfterDiscount)
+    const netTaxableGain = Math.max(0, netGainsAfterDiscount - lossesApplied)
+    const closingLosses = Math.max(0, totalAvailableLosses - lossesApplied)
+    
+    return {
+      financial_year: fy,
+      opening_carried_losses: openingLosses,
+      manual_loss_adjustment: manualAdj,
+      manual_adjustment_note: thisFYRecord?.manual_adjustment_note || manualAdjustmentNote,
+      total_gross_gains: salesSummary.totalGrossGains,
+      total_discounts: salesSummary.totalDiscounts,
+      total_losses: salesSummary.totalLosses,
+      losses_applied: lossesApplied,
+      closing_carried_losses: closingLosses,
+      net_taxable_gain: netTaxableGain,
+      is_finalized: thisFYRecord?.is_finalized || false,
+      finalized_at: thisFYRecord?.finalized_at,
+    }
+  }
+
+  // Save FY summary to database
+  const saveFYSummary = async (fyRecord: FYSummaryRecord) => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    
+    const existingRecord = fySummaries.find(s => s.financial_year === fyRecord.financial_year)
+    
+    if (existingRecord?.id) {
+      // Update existing
+      await supabase
+        .from('cgt_fy_summary')
+        .update({
+          ...fyRecord,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingRecord.id)
+    } else {
+      // Insert new
+      await supabase
+        .from('cgt_fy_summary')
+        .insert({
+          ...fyRecord,
+          user_id: user.id,
+        })
+    }
+    
+    loadData()
+  }
+
+  // Finalize FY (lock it)
+  const finalizeFY = async (fy: string) => {
+    if (!confirm(`Finalize FY ${fy}? This locks the record after you've filed your tax return.`)) return
+    
+    const fyRecord = calculateFYWithCarryForward(fy)
+    fyRecord.is_finalized = true
+    fyRecord.finalized_at = new Date().toISOString()
+    await saveFYSummary(fyRecord)
+  }
+
+  // Unlock FY (for corrections)
+  const unlockFY = async (fy: string) => {
+    if (!confirm(`Unlock FY ${fy}? Only do this if you need to make corrections.`)) return
+    
+    const supabase = createClient()
+    const existingRecord = fySummaries.find(s => s.financial_year === fy)
+    if (existingRecord?.id) {
+      await supabase
+        .from('cgt_fy_summary')
+        .update({ is_finalized: false, finalized_at: null })
+        .eq('id', existingRecord.id)
+      loadData()
+    }
+  }
+
+  // Save manual adjustment
+  const saveManualAdjustment = async () => {
+    const fyRecord = calculateFYWithCarryForward(selectedFY)
+    fyRecord.manual_loss_adjustment = parseFloat(manualLossAdjustment) || 0
+    fyRecord.manual_adjustment_note = manualAdjustmentNote
+    await saveFYSummary(fyRecord)
   }
 
   const calculateIncomeTax = (taxableIncome: number): number => {
@@ -243,6 +429,8 @@ export default function CGTPage() {
     // Calculate total proceeds for brokerage calculation
     const totalGrossProceeds = units * price
     const sellBrokerage = calculateSellBrokerage(totalGrossProceeds, holding.currency, rate)
+    const regFees = parseFloat(regulatoryFees) || 0
+    const totalSellFees = sellBrokerage + regFees
     
     // Distribute brokerage proportionally across lots
     let totalUnitsToSell = 0
@@ -267,7 +455,7 @@ export default function CGTPage() {
 
       // Proportional brokerage for this lot
       const lotProportion = unitsFromThisLot / totalUnitsToSell
-      const lotSellBrokerage = sellBrokerage * lotProportion
+      const lotSellBrokerage = totalSellFees * lotProportion
       const lotBuyBrokerageAdj = buyBrokerageAdj * lotProportion
 
       // Calculate with brokerage
@@ -352,6 +540,7 @@ export default function CGTPage() {
     setBroker('stake')
     setCustomSellBrokerage('')
     setBuyBrokerageAdjustment('')
+    setRegulatoryFees('')
     setSubmitting(false)
     loadData()
   }
@@ -390,14 +579,20 @@ export default function CGTPage() {
   const formatCurrency = (value: number) => 
     `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-  // Tax Estimator Calculation
+  // Computed FY summary with carry forward
+  const currentFY = getFYFromDate(new Date())
+  const viewingFY = selectedFY || currentFY
+  const computedFYSummary = calculateFYWithCarryForward(viewingFY)
+  const currentFYSummary = calculateTaxSummary(soldLots, currentFY)
+  
+  // Tax Estimator Calculation (uses computed summary with carry forward)
   const salary = parseFloat(baseSalary) || 0
-  const taxableIncome = salary + currentFYSummary.netCapitalGain
+  const taxableIncome = salary + computedFYSummary.net_taxable_gain
   const incomeTax = calculateIncomeTax(taxableIncome)
   const medicareLevyFull = taxableIncome * MEDICARE_LEVY_RATE
   const totalTax = incomeTax + medicareLevyFull
   const marginalRate = getMarginalRate(taxableIncome)
-  const taxOnCGT = currentFYSummary.netCapitalGain * (marginalRate / 100)
+  const taxOnCGT = computedFYSummary.net_taxable_gain * (marginalRate / 100)
 
   // Preview calculation for modal
   const selectedHoldingData = holdings.find(h => h.id === selectedHolding)
@@ -408,7 +603,9 @@ export default function CGTPage() {
   const previewSellBrokerage = selectedHoldingData 
     ? calculateSellBrokerage(previewGrossProceeds, selectedHoldingData.currency, previewRate)
     : 0
+  const previewRegFees = parseFloat(regulatoryFees) || 0
   const previewBuyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
+  const previewTotalSellFees = previewSellBrokerage + previewRegFees
 
   if (loading) {
     return (
@@ -439,57 +636,293 @@ export default function CGTPage() {
         </button>
       </div>
 
-      {/* Current FY Summary - Dark Card */}
+      {/* FY Summary - Dark Card */}
       <div className="bg-slate-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Calculator className="w-4 h-4 text-slate-400" />
-            <span className="text-sm font-medium text-white">FY {currentFY} Summary</span>
+            <select
+              value={viewingFY}
+              onChange={(e) => {
+                setSelectedFY(e.target.value)
+                const fyRecord = fySummaries.find(s => s.financial_year === e.target.value)
+                setManualLossAdjustment(fyRecord?.manual_loss_adjustment?.toString() || '')
+                setManualAdjustmentNote(fyRecord?.manual_adjustment_note || '')
+              }}
+              className="bg-slate-700 text-white text-sm font-medium px-2 py-1 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {getAllFYs().map(fy => (
+                <option key={fy} value={fy}>FY {fy}</option>
+              ))}
+            </select>
+            {computedFYSummary.is_finalized && (
+              <span className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">
+                <Lock className="w-3 h-3" />
+                Finalized
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => setShowTaxEstimator(!showTaxEstimator)}
-            className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded flex items-center gap-1"
-          >
-            <DollarSign className="w-3 h-3" />
-            Tax Estimator
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCarryForward(!showCarryForward)}
+              className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded"
+            >
+              {showCarryForward ? 'Hide' : 'Show'} Details
+            </button>
+            <button
+              onClick={() => setShowTaxEstimator(!showTaxEstimator)}
+              className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded flex items-center gap-1"
+            >
+              <DollarSign className="w-3 h-3" />
+              Tax Est.
+            </button>
+          </div>
         </div>
         
+        {/* Main Summary Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div>
             <p className="text-xs text-slate-400">Gross Gains</p>
             <p className="text-xl sm:text-2xl font-bold text-emerald-400">
-              {formatCurrency(currentFYSummary.totalGrossGains)}
+              {formatCurrency(computedFYSummary.total_gross_gains)}
             </p>
           </div>
           <div>
             <p className="text-xs text-slate-400">50% Discount</p>
             <p className="text-xl sm:text-2xl font-bold text-cyan-400">
-              -{formatCurrency(currentFYSummary.totalDiscounts)}
+              -{formatCurrency(computedFYSummary.total_discounts)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Losses</p>
+            <p className="text-xs text-slate-400">Losses Applied</p>
             <p className="text-xl sm:text-2xl font-bold text-orange-400">
-              -{formatCurrency(currentFYSummary.totalLosses)}
+              -{formatCurrency(computedFYSummary.losses_applied)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Net CGT</p>
-            <p className={`text-xl sm:text-2xl font-bold ${currentFYSummary.netCapitalGain >= 0 ? 'text-white' : 'text-orange-400'}`}>
-              {formatCurrency(currentFYSummary.netCapitalGain)}
+            <p className="text-xs text-slate-400">Net Taxable</p>
+            <p className={`text-xl sm:text-2xl font-bold ${computedFYSummary.net_taxable_gain >= 0 ? 'text-white' : 'text-orange-400'}`}>
+              {formatCurrency(computedFYSummary.net_taxable_gain)}
             </p>
           </div>
         </div>
 
-        {/* 50% Discount Info */}
-        <div className="mt-3 flex items-start gap-2 text-xs bg-slate-700/50 text-slate-300 px-3 py-2 rounded">
-          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>
-            Holdings sold after 12+ months receive a 50% CGT discount. 
-            Losses are offset against short-term gains first. Brokerage fees are included in cost base/proceeds.
-          </span>
+        {/* Carry Forward Details */}
+        {showCarryForward && (
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <h4 className="text-xs font-medium text-slate-400 mb-3 flex items-center gap-2">
+              <ArrowRight className="w-3 h-3" />
+              Carry Forward Breakdown
+            </h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Left: Loss Sources */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-300">
+                  <span>Opening (from prior FY):</span>
+                  <span className="font-medium text-orange-400">
+                    {formatCurrency(computedFYSummary.opening_carried_losses)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>This FY Sales Losses:</span>
+                  <span className="font-medium text-orange-400">
+                    {formatCurrency(computedFYSummary.total_losses)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Manual Adjustment:</span>
+                  <span className="font-medium text-orange-400">
+                    {formatCurrency(computedFYSummary.manual_loss_adjustment)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-200 pt-2 border-t border-slate-600">
+                  <span className="font-medium">Total Available:</span>
+                  <span className="font-bold text-orange-400">
+                    {formatCurrency(
+                      computedFYSummary.opening_carried_losses + 
+                      computedFYSummary.total_losses + 
+                      computedFYSummary.manual_loss_adjustment
+                    )}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Right: Application & Carry Forward */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-300">
+                  <span>Gains After Discount:</span>
+                  <span className="font-medium text-emerald-400">
+                    {formatCurrency(computedFYSummary.total_gross_gains - computedFYSummary.total_discounts)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Losses Used:</span>
+                  <span className="font-medium text-orange-400">
+                    -{formatCurrency(computedFYSummary.losses_applied)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-200 pt-2 border-t border-slate-600">
+                  <span className="font-medium">Net Taxable:</span>
+                  <span className="font-bold text-white">
+                    {formatCurrency(computedFYSummary.net_taxable_gain)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-200 bg-slate-700 -mx-2 px-2 py-2 rounded mt-2">
+                  <span className="font-medium">Carry Forward to Next FY:</span>
+                  <span className="font-bold text-cyan-400">
+                    {formatCurrency(computedFYSummary.closing_carried_losses)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Manual Adjustment Input (only for non-finalized FYs) */}
+            {!computedFYSummary.is_finalized && (
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <label className="text-xs text-slate-400 mb-2 block">
+                  Manual Loss Adjustment (pre-SWT losses or corrections)
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                    <input
+                      type="number"
+                      value={manualLossAdjustment}
+                      onChange={(e) => setManualLossAdjustment(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={manualAdjustmentNote}
+                    onChange={(e) => setManualAdjustmentNote(e.target.value)}
+                    placeholder="Note (e.g., FY23-24 losses)"
+                    className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    onClick={saveManualAdjustment}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Finalize / Unlock Button */}
+            <div className="mt-4 flex justify-end">
+              {computedFYSummary.is_finalized ? (
+                <button
+                  onClick={() => unlockFY(viewingFY)}
+                  className="flex items-center gap-1 text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded"
+                >
+                  <Unlock className="w-3 h-3" />
+                  Unlock FY
+                </button>
+              ) : (
+                <button
+                  onClick={() => finalizeFY(viewingFY)}
+                  className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded"
+                >
+                  <Lock className="w-3 h-3" />
+                  Finalize FY (after tax filing)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Info */}
+        {!showCarryForward && (
+          <div className="mt-3 flex items-start gap-2 text-xs bg-slate-700/50 text-slate-300 px-3 py-2 rounded">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>
+              {computedFYSummary.closing_carried_losses > 0 
+                ? `${formatCurrency(computedFYSummary.closing_carried_losses)} losses carry forward to next FY.`
+                : 'All losses used. No carry forward.'
+              }
+              {' '}Click "Show Details" for full breakdown.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Real Balance Calculator */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-600" />
+            Real Balance Calculator
+          </h3>
+          <button
+            onClick={() => setShowRealBalance(!showRealBalance)}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            {showRealBalance ? 'Hide' : 'Show'}
+          </button>
         </div>
+
+        {showRealBalance ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Offset Account Balance</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <input
+                  type="number"
+                  value={offsetBalance}
+                  onChange={(e) => setOffsetBalance(e.target.value)}
+                  placeholder="50000"
+                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Enter your current offset/savings balance</p>
+            </div>
+
+            {parseFloat(offsetBalance) > 0 && (
+              <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-emerald-200 rounded-lg p-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Offset Balance</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(parseFloat(offsetBalance))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Less: CGT Owed (FY {currentFY})</span>
+                    <span className="font-medium text-orange-600">
+                      ({formatCurrency(taxOnCGT)})
+                    </span>
+                  </div>
+                  <div className="border-t border-emerald-300 pt-2 flex justify-between">
+                    <span className="font-semibold text-gray-900">Your Real Balance</span>
+                    <span className="text-xl font-bold text-emerald-600">
+                      {formatCurrency(parseFloat(offsetBalance) - taxOnCGT)}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-emerald-700 mt-3 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  This is your spendable balance after reserving for CGT at your marginal rate ({marginalRate}%).
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-gray-600">
+              {parseFloat(offsetBalance) > 0 
+                ? `Balance: ${formatCurrency(parseFloat(offsetBalance))}` 
+                : 'Enter your offset balance to see real available funds'}
+            </span>
+            {parseFloat(offsetBalance) > 0 && (
+              <span className="text-sm font-semibold text-emerald-600">
+                Real: {formatCurrency(parseFloat(offsetBalance) - taxOnCGT)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tax Estimator Panel */}
@@ -832,15 +1265,42 @@ export default function CGTPage() {
                     </p>
                   </div>
 
+                  {/* Regulatory Fees */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Regulatory/Other Fees (SEC, FINRA, etc.)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                      <input
+                        type="number"
+                        value={regulatoryFees}
+                        onChange={(e) => setRegulatoryFees(e.target.value)}
+                        placeholder="0.00"
+                        step="0.01"
+                        className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter from trade confirmation (US stocks)
+                    </p>
+                  </div>
+
                   {/* Brokerage Preview */}
                   {previewUnits > 0 && previewPrice > 0 && (
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs">
-                      <p className="font-medium text-orange-800 mb-1">Brokerage Preview</p>
+                      <p className="font-medium text-orange-800 mb-1">Fees Preview</p>
                       <div className="space-y-1 text-orange-700">
                         <div className="flex justify-between">
                           <span>Sell Brokerage:</span>
                           <span>${previewSellBrokerage.toFixed(2)}</span>
                         </div>
+                        {previewRegFees > 0 && (
+                          <div className="flex justify-between">
+                            <span>Regulatory Fees:</span>
+                            <span>${previewRegFees.toFixed(2)}</span>
+                          </div>
+                        )}
                         {previewBuyBrokerageAdj > 0 && (
                           <div className="flex justify-between">
                             <span>Buy Brokerage Adj:</span>
@@ -848,8 +1308,8 @@ export default function CGTPage() {
                           </div>
                         )}
                         <div className="flex justify-between font-medium border-t border-orange-300 pt-1">
-                          <span>Total Brokerage:</span>
-                          <span>${(previewSellBrokerage + previewBuyBrokerageAdj).toFixed(2)}</span>
+                          <span>Total Fees:</span>
+                          <span>${(previewTotalSellFees + previewBuyBrokerageAdj).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
