@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Globe } from 'lucide-react'
+import { Target } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -32,6 +33,7 @@ const navigation = [
   { name: 'Momentum', href: '/momentum', icon: TrendingUp },
   { name: 'Assessor', href: '/assessor', icon: Zap },
   { name: 'Journal', href: '/journal', icon: BookOpen },
+  { name: 'Trade Simulator', href: '/trade-simulator', icon: Target },
   { name: 'CGT Tracker', href: '/cgt', icon: Calculator },
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'AI Universe', href: '/universe', icon: Globe },
