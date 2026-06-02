@@ -26,6 +26,7 @@ interface Holding {
   total_units: number
   average_price: number
   current_price?: number
+  currency: string
   lots: Lot[]
 }
 
@@ -50,6 +51,11 @@ interface SimulationResult {
     totalCGT: number
     netProceeds: number
     remainingUnits: number
+    // Currency conversion fields
+    currency: string
+    exchangeRate: number
+    gainInAUD: number
+    taxableGainInAUD: number
     // Loss offset fields
     lossesApplied: number
     taxableGainAfterLosses: number
@@ -82,6 +88,9 @@ export default function CGTSimulatorPage() {
   const [existingLosses, setExistingLosses] = useState<number>(0) // From CGT tracker (current FY)
   const [carriedLosses, setCarriedLosses] = useState<string>('') // Manual input for carried forward losses
   const [applyLosses, setApplyLosses] = useState<boolean>(true)
+  
+  // Exchange rates state
+  const [exchangeRates, setExchangeRates] = useState<{ USD_AUD: number; INR_AUD: number }>({ USD_AUD: 1.55, INR_AUD: 0.019 })
 
   // Fetch holdings with lots directly from Supabase
   useEffect(() => {
@@ -119,11 +128,27 @@ export default function CGTSimulatorPage() {
               name: h.name || 'Unknown',
               total_units: totalUnits,
               average_price: avgPrice,
+              currency: h.currency || 'AUD',
               lots: lots
             }
           }).filter((h: Holding) => h.total_units > 0)
 
           setHoldings(transformedHoldings)
+        }
+
+        // Fetch exchange rates
+        try {
+          const ratesResponse = await fetch('/api/exchange-rates')
+          if (ratesResponse.ok) {
+            const ratesData = await ratesResponse.json()
+            setExchangeRates({
+              USD_AUD: ratesData.USD_AUD || 1.55,
+              INR_AUD: ratesData.INR_AUD || 0.019
+            })
+          }
+        } catch (ratesError) {
+          console.error('Error fetching exchange rates:', ratesError)
+          // Keep default rates
         }
 
         // Fetch existing capital losses from cgt_sales in current FY
@@ -273,27 +298,51 @@ export default function CGTSimulatorPage() {
     }
 
     // Calculate summary (before losses)
+    const totalGain = lotsUsed.reduce((sum, l) => sum + l.gain, 0)
     const totalTaxableGain = lotsUsed.reduce((sum, l) => sum + l.taxableGain, 0)
-    const totalCGT = lotsUsed.reduce((sum, l) => sum + l.cgt, 0)
     const grossProceeds = lotsUsed.reduce((sum, l) => sum + l.proceeds, 0)
     
-    // Calculate loss offset
+    // Currency conversion
+    const currency = selectedHolding.currency || 'AUD'
+    let exchangeRate = 1
+    if (currency === 'USD') {
+      exchangeRate = exchangeRates.USD_AUD
+    } else if (currency === 'INR') {
+      exchangeRate = exchangeRates.INR_AUD
+    }
+    
+    // Convert gains to AUD for CGT calculation
+    const gainInAUD = totalGain * exchangeRate
+    const taxableGainInAUD = totalTaxableGain * exchangeRate
+    
+    // Calculate CGT in AUD (before losses)
+    const totalCGT = taxableGainInAUD * TAX_RATE
+    
+    // Calculate loss offset (losses are already in AUD from CGT Tracker)
     const availableLosses = existingLosses + (parseFloat(carriedLosses) || 0)
-    const lossesApplied = applyLosses ? Math.min(availableLosses, totalTaxableGain) : 0
-    const taxableGainAfterLosses = Math.max(0, totalTaxableGain - lossesApplied)
+    const lossesApplied = applyLosses ? Math.min(availableLosses, taxableGainInAUD) : 0
+    const taxableGainAfterLosses = Math.max(0, taxableGainInAUD - lossesApplied)
     const cgtAfterLosses = taxableGainAfterLosses * TAX_RATE
     const cgtSavings = totalCGT - cgtAfterLosses
-    const netProceedsAfterLosses = grossProceeds - cgtAfterLosses
+    
+    // Net proceeds (in original currency, minus CGT in original currency equivalent)
+    const cgtInOriginalCurrency = cgtAfterLosses / exchangeRate
+    const netProceedsAfterLosses = grossProceeds - cgtInOriginalCurrency
     
     const summary = {
       totalUnits: lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
       grossProceeds,
       totalCostBase: lotsUsed.reduce((sum, l) => sum + l.costBase, 0),
-      totalGain: lotsUsed.reduce((sum, l) => sum + l.gain, 0),
+      totalGain,
       totalTaxableGain,
       totalCGT,
-      netProceeds: lotsUsed.reduce((sum, l) => sum + l.proceeds - l.cgt, 0),
+      netProceeds: grossProceeds - (totalCGT / exchangeRate),
       remainingUnits: totalAvailable - lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
+      // Currency conversion fields
+      currency,
+      exchangeRate,
+      gainInAUD,
+      taxableGainInAUD,
       // Loss offset fields
       lossesApplied,
       taxableGainAfterLosses,
@@ -369,9 +418,9 @@ export default function CGTSimulatorPage() {
             <ul className="space-y-1 text-blue-700">
               <li>• Uses FIFO (First In, First Out) — oldest lots sell first</li>
               <li>• Holdings held 12+ months get 50% CGT discount</li>
+              <li>• USD/INR gains auto-converted to AUD for CGT calculation</li>
               <li>• Capital losses offset gains — current FY losses auto-loaded from CGT Tracker</li>
               <li>• Tax rate: 32.5% (your marginal rate)</li>
-              <li>• "Extract Cost Base" mode calculates units to de-risk while leaving runners</li>
             </ul>
           </div>
         </div>
@@ -396,7 +445,7 @@ export default function CGTSimulatorPage() {
               <option value="">Choose a holding...</option>
               {holdings.map(h => (
                 <option key={h.id} value={h.id}>
-                  {h.ticker} — {h.total_units} units @ avg {formatCurrency(h.average_price)}
+                  {h.ticker} ({h.currency}) — {h.total_units} units @ avg ${h.average_price.toFixed(2)}
                 </option>
               ))}
             </select>
@@ -404,10 +453,30 @@ export default function CGTSimulatorPage() {
 
           {selectedHolding && (
             <>
+              {/* Currency & Exchange Rate Display */}
+              {selectedHolding.currency !== 'AUD' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-blue-800">
+                      Currency: <span className="font-semibold">{selectedHolding.currency}</span>
+                    </span>
+                    <span className="text-blue-600">
+                      Rate: 1 {selectedHolding.currency} = {
+                        selectedHolding.currency === 'USD' 
+                          ? exchangeRates.USD_AUD.toFixed(4) 
+                          : selectedHolding.currency === 'INR'
+                          ? exchangeRates.INR_AUD.toFixed(4)
+                          : '1.0000'
+                      } AUD
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Current Price Input */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current/Expected Sale Price (per unit)
+                  Current/Expected Sale Price (per unit in {selectedHolding.currency})
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
@@ -631,35 +700,59 @@ export default function CGTSimulatorPage() {
                   </div>
                 </div>
 
+                {/* Currency Notice */}
+                {result.summary.currency !== 'AUD' && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                    <p className="text-blue-800">
+                      <span className="font-medium">Currency: {result.summary.currency}</span>
+                      <span className="text-blue-600 ml-2">
+                        (1 {result.summary.currency} = {result.summary.exchangeRate.toFixed(4)} AUD)
+                      </span>
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Proceeds shown in {result.summary.currency}. CGT calculated in AUD.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Gross Proceeds</span>
-                    <span className="font-medium">{formatCurrency(result.summary.grossProceeds)}</span>
+                    <span className="text-gray-600">Gross Proceeds ({result.summary.currency})</span>
+                    <span className="font-medium">${result.summary.grossProceeds.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Cost Base</span>
-                    <span className="font-medium">({formatCurrency(result.summary.totalCostBase)})</span>
+                    <span className="text-gray-600">Total Cost Base ({result.summary.currency})</span>
+                    <span className="font-medium">(${result.summary.totalCostBase.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Capital Gain</span>
+                    <span className="text-gray-600">Capital Gain ({result.summary.currency})</span>
                     <span className={`font-medium ${result.summary.totalGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatCurrency(result.summary.totalGain)}
+                      ${result.summary.totalGain.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
+                  
+                  {/* Conversion to AUD section */}
+                  {result.summary.currency !== 'AUD' && (
+                    <div className="flex justify-between py-2 border-b border-gray-100 bg-blue-50 -mx-3 px-3">
+                      <span className="text-blue-700">Capital Gain in AUD</span>
+                      <span className="font-medium text-blue-800">{formatCurrency(result.summary.gainInAUD)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Taxable Gain (after discounts)</span>
-                    <span className="font-medium">{formatCurrency(result.summary.totalTaxableGain)}</span>
+                    <span className="text-gray-600">Taxable Gain (after discounts) AUD</span>
+                    <span className="font-medium">{formatCurrency(result.summary.taxableGainInAUD)}</span>
                   </div>
                   
                   {/* Loss Offset Section */}
                   {result.summary.lossesApplied > 0 && (
                     <>
                       <div className="flex justify-between py-2 border-b border-gray-100 bg-red-50 -mx-3 px-3">
-                        <span className="text-red-700">Less: Capital Losses Applied</span>
+                        <span className="text-red-700">Less: Capital Losses Applied (AUD)</span>
                         <span className="font-medium text-red-600">({formatCurrency(result.summary.lossesApplied)})</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Net Taxable Gain</span>
+                        <span className="text-gray-600 font-medium">Net Taxable Gain (AUD)</span>
                         <span className="font-medium">{formatCurrency(result.summary.taxableGainAfterLosses)}</span>
                       </div>
                     </>
