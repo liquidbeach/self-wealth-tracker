@@ -858,65 +858,98 @@ export default function CGTPage() {
           </button>
         </div>
 
-        {showRealBalance ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Offset Account Balance</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                <input
-                  type="number"
-                  value={offsetBalance}
-                  onChange={(e) => setOffsetBalance(e.target.value)}
-                  placeholder="50000"
-                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Enter your current offset/savings balance</p>
-            </div>
+        {(() => {
+          // Calculate CGT owed using default 32.5% or actual marginal rate if salary entered
+          const effectiveRate = salary > 0 ? marginalRate : 32.5
+          const netTaxableGain = computedFYSummary.net_taxable_gain
+          const cgtOwed = netTaxableGain * (effectiveRate / 100)
+          const offsetAmt = parseFloat(offsetBalance) || 0
+          const realBalance = offsetAmt - cgtOwed
 
-            {parseFloat(offsetBalance) > 0 && (
-              <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-emerald-200 rounded-lg p-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Offset Balance</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(parseFloat(offsetBalance))}</span>
+          return showRealBalance ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Offset Account Balance</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    value={offsetBalance}
+                    onChange={(e) => setOffsetBalance(e.target.value)}
+                    placeholder="50000"
+                    className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Enter your current offset/savings balance</p>
+              </div>
+
+              {/* CGT Calculation Breakdown */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-xs font-medium text-orange-800 mb-2">CGT Calculation (FY {viewingFY})</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-orange-700">Net Taxable Gain:</span>
+                    <span className="font-medium text-orange-800">{formatCurrency(netTaxableGain)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Less: CGT Owed (FY {currentFY})</span>
-                    <span className="font-medium text-orange-600">
-                      ({formatCurrency(taxOnCGT)})
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-orange-700">× Tax Rate:</span>
+                    <span className="font-medium text-orange-800">{effectiveRate}%</span>
                   </div>
-                  <div className="border-t border-emerald-300 pt-2 flex justify-between">
-                    <span className="font-semibold text-gray-900">Your Real Balance</span>
-                    <span className="text-xl font-bold text-emerald-600">
-                      {formatCurrency(parseFloat(offsetBalance) - taxOnCGT)}
-                    </span>
+                  <div className="flex justify-between pt-1 border-t border-orange-300">
+                    <span className="font-medium text-orange-800">CGT Owed:</span>
+                    <span className="font-bold text-orange-600">{formatCurrency(cgtOwed)}</span>
                   </div>
                 </div>
-                
-                <p className="text-xs text-emerald-700 mt-3 flex items-start gap-1">
-                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  This is your spendable balance after reserving for CGT at your marginal rate ({marginalRate}%).
+                <p className="text-xs text-orange-600 mt-2">
+                  {salary > 0 
+                    ? `Using marginal rate based on salary in Tax Estimator.`
+                    : `Using default 32.5%. Enter salary in Tax Estimator for your actual rate.`
+                  }
                 </p>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-gray-600">
-              {parseFloat(offsetBalance) > 0 
-                ? `Balance: ${formatCurrency(parseFloat(offsetBalance))}` 
-                : 'Enter your offset balance to see real available funds'}
-            </span>
-            {parseFloat(offsetBalance) > 0 && (
-              <span className="text-sm font-semibold text-emerald-600">
-                Real: {formatCurrency(parseFloat(offsetBalance) - taxOnCGT)}
+
+              {/* Real Balance Result */}
+              {offsetAmt > 0 && (
+                <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-emerald-200 rounded-lg p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Offset Balance</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(offsetAmt)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Less: CGT Owed</span>
+                      <span className="font-medium text-orange-600">({formatCurrency(cgtOwed)})</span>
+                    </div>
+                    <div className="border-t border-emerald-300 pt-2 flex justify-between">
+                      <span className="font-semibold text-gray-900">Your Real Balance, John</span>
+                      <span className="text-xl font-bold text-emerald-600">
+                        {formatCurrency(realBalance)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-emerald-700 mt-3 flex items-start gap-1">
+                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    This is your spendable balance after reserving {formatCurrency(cgtOwed)} for CGT.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-600">
+                {offsetAmt > 0 
+                  ? `Balance: ${formatCurrency(offsetAmt)} | CGT Owed: ${formatCurrency(cgtOwed)}` 
+                  : 'Enter your offset balance to see real available funds'}
               </span>
-            )}
-          </div>
-        )}
+              {offsetAmt > 0 && (
+                <span className="text-sm font-semibold text-emerald-600">
+                  Real: {formatCurrency(realBalance)}
+                </span>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Tax Estimator Panel */}
