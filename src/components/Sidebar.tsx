@@ -38,6 +38,7 @@ const navigation = [
   { name: 'Health', href: '/health', icon: Heart },
   { name: 'Risk', href: '/risk', icon: AlertTriangle },
   { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
 ]
 
 export default function Sidebar() {
