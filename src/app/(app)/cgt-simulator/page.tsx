@@ -81,7 +81,7 @@ export default function CGTSimulatorPage() {
         // Fetch holdings with stocks and lots
         const { data: holdingsData, error: holdingsError } = await supabase
           .from('holdings')
-          .select('*, stocks(*), lots(*)')
+          .select('*, lots(*)')
           .eq('user_id', user.id)
 
         if (holdingsError) {
@@ -100,8 +100,8 @@ export default function CGTSimulatorPage() {
           return {
             id: h.id,
             stock_id: h.stock_id,
-            ticker: h.stocks?.ticker || 'Unknown',
-            name: h.stocks?.name || 'Unknown',
+            ticker: h.ticker || 'Unknown',
+            name: h.name || 'Unknown',
             total_units: totalUnits,
             average_price: avgPrice,
             lots: lots
