@@ -56,6 +56,11 @@ interface SimulationResult {
     exchangeRate: number
     gainInAUD: number
     taxableGainInAUD: number
+    // Brokerage fields
+    sellBrokerage: number
+    buyBrokerageAdjustment: number
+    proceedsAfterBrokerage: number
+    gainAfterBrokerage: number
     // Loss offset fields
     lossesApplied: number
     taxableGainAfterLosses: number
@@ -91,6 +96,47 @@ export default function CGTSimulatorPage() {
   
   // Exchange rates state
   const [exchangeRates, setExchangeRates] = useState<{ USD_AUD: number; INR_AUD: number }>({ USD_AUD: 1.55, INR_AUD: 0.019 })
+
+  // Brokerage state
+  const [broker, setBroker] = useState<'stake' | 'commsec' | 'cmc' | 'custom'>('stake')
+  const [customBrokerage, setCustomBrokerage] = useState<string>('')
+  const [buyBrokerageAdjustment, setBuyBrokerageAdjustment] = useState<string>('') // If buy brokerage wasn't included in cost base
+
+  // Calculate sell brokerage based on broker and proceeds
+  const calculateSellBrokerage = (proceeds: number, currency: string): number => {
+    if (broker === 'custom') {
+      return parseFloat(customBrokerage) || 0
+    }
+    
+    if (broker === 'stake') {
+      // Stake: $3 flat (USD for US stocks, AUD for AU stocks)
+      return 3
+    }
+    
+    if (broker === 'cmc') {
+      // CMC: $0 first trade, then $11 or 0.10%
+      // Assume not first trade
+      return Math.max(11, proceeds * 0.001)
+    }
+    
+    if (broker === 'commsec') {
+      // CommSec tiered (AUD):
+      // Need to convert to AUD for tier calculation if USD
+      let proceedsAUD = proceeds
+      if (currency === 'USD') {
+        proceedsAUD = proceeds * exchangeRates.USD_AUD
+      } else if (currency === 'INR') {
+        proceedsAUD = proceeds * exchangeRates.INR_AUD
+      }
+      
+      if (proceedsAUD <= 1000) return 5
+      if (proceedsAUD <= 10000) return 10
+      if (proceedsAUD <= 25000) return 19.95
+      return proceedsAUD * 0.0012 // 0.12%
+    }
+    
+    return 0
+  }
 
   // Fetch holdings with lots directly from Supabase
   useEffect(() => {
@@ -301,6 +347,7 @@ export default function CGTSimulatorPage() {
     const totalGain = lotsUsed.reduce((sum, l) => sum + l.gain, 0)
     const totalTaxableGain = lotsUsed.reduce((sum, l) => sum + l.taxableGain, 0)
     const grossProceeds = lotsUsed.reduce((sum, l) => sum + l.proceeds, 0)
+    const totalCostBase = lotsUsed.reduce((sum, l) => sum + l.costBase, 0)
     
     // Currency conversion
     const currency = selectedHolding.currency || 'AUD'
@@ -311,9 +358,32 @@ export default function CGTSimulatorPage() {
       exchangeRate = exchangeRates.INR_AUD
     }
     
+    // Brokerage calculations
+    const sellBrokerage = calculateSellBrokerage(grossProceeds, currency)
+    const buyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
+    
+    // Adjusted figures after brokerage
+    const proceedsAfterBrokerage = grossProceeds - sellBrokerage
+    const adjustedCostBase = totalCostBase + buyBrokerageAdj
+    const gainAfterBrokerage = proceedsAfterBrokerage - adjustedCostBase
+    
+    // Recalculate taxable gain with brokerage
+    // Need to apply same discount logic to adjusted gain
+    let adjustedTaxableGain = 0
+    let tempGain = gainAfterBrokerage
+    for (const lotUsed of lotsUsed) {
+      const lotProportion = lotUsed.gain / totalGain
+      const lotAdjustedGain = gainAfterBrokerage * lotProportion
+      if (lotUsed.discountEligible && lotAdjustedGain > 0) {
+        adjustedTaxableGain += lotAdjustedGain * 0.5
+      } else {
+        adjustedTaxableGain += Math.max(0, lotAdjustedGain)
+      }
+    }
+    
     // Convert gains to AUD for CGT calculation
-    const gainInAUD = totalGain * exchangeRate
-    const taxableGainInAUD = totalTaxableGain * exchangeRate
+    const gainInAUD = gainAfterBrokerage * exchangeRate
+    const taxableGainInAUD = adjustedTaxableGain * exchangeRate
     
     // Calculate CGT in AUD (before losses)
     const totalCGT = taxableGainInAUD * TAX_RATE
@@ -327,22 +397,27 @@ export default function CGTSimulatorPage() {
     
     // Net proceeds (in original currency, minus CGT in original currency equivalent)
     const cgtInOriginalCurrency = cgtAfterLosses / exchangeRate
-    const netProceedsAfterLosses = grossProceeds - cgtInOriginalCurrency
+    const netProceedsAfterLosses = proceedsAfterBrokerage - cgtInOriginalCurrency
     
     const summary = {
       totalUnits: lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
       grossProceeds,
-      totalCostBase: lotsUsed.reduce((sum, l) => sum + l.costBase, 0),
+      totalCostBase,
       totalGain,
       totalTaxableGain,
       totalCGT,
-      netProceeds: grossProceeds - (totalCGT / exchangeRate),
+      netProceeds: proceedsAfterBrokerage - (totalCGT / exchangeRate),
       remainingUnits: totalAvailable - lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
       // Currency conversion fields
       currency,
       exchangeRate,
       gainInAUD,
       taxableGainInAUD,
+      // Brokerage fields
+      sellBrokerage,
+      buyBrokerageAdjustment: buyBrokerageAdj,
+      proceedsAfterBrokerage,
+      gainAfterBrokerage,
       // Loss offset fields
       lossesApplied,
       taxableGainAfterLosses,
@@ -621,6 +696,63 @@ export default function CGTSimulatorPage() {
                 )}
               </div>
 
+              {/* Brokerage Section */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Brokerage Fees</label>
+                
+                {/* Broker Selector */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-500 mb-1">Select Broker</label>
+                  <select
+                    value={broker}
+                    onChange={(e) => setBroker(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                  >
+                    <option value="stake">Stake ($3 flat)</option>
+                    <option value="commsec">CommSec (tiered: $5-0.12%)</option>
+                    <option value="cmc">CMC ($11 or 0.10%)</option>
+                    <option value="custom">Custom amount</option>
+                  </select>
+                </div>
+
+                {/* Custom Brokerage Input */}
+                {broker === 'custom' && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-gray-500 mb-1">Sell Brokerage Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={customBrokerage}
+                        onChange={(e) => setCustomBrokerage(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Buy Brokerage Adjustment */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Buy Brokerage Adjustment (if not in cost base)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={buyBrokerageAdjustment}
+                      onChange={(e) => setBuyBrokerageAdjustment(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Add if your purchase price didn't include brokerage</p>
+                </div>
+              </div>
+
               {/* Run Simulation Button */}
               <button
                 onClick={runSimulation}
@@ -720,14 +852,48 @@ export default function CGTSimulatorPage() {
                     <span className="text-gray-600">Gross Proceeds ({result.summary.currency})</span>
                     <span className="font-medium">${result.summary.grossProceeds.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
+                  
+                  {/* Brokerage deductions */}
+                  {(result.summary.sellBrokerage > 0 || result.summary.buyBrokerageAdjustment > 0) && (
+                    <>
+                      {result.summary.sellBrokerage > 0 && (
+                        <div className="flex justify-between py-2 border-b border-gray-100 bg-orange-50 -mx-3 px-3">
+                          <span className="text-orange-700">Less: Sell Brokerage</span>
+                          <span className="font-medium text-orange-600">
+                            (${result.summary.sellBrokerage.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Net Proceeds ({result.summary.currency})</span>
+                        <span className="font-medium">${result.summary.proceedsAfterBrokerage.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Cost Base ({result.summary.currency})</span>
+                    <span className="text-gray-600">Cost Base ({result.summary.currency})</span>
                     <span className="font-medium">(${result.summary.totalCostBase.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                   </div>
+                  
+                  {result.summary.buyBrokerageAdjustment > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-100 bg-orange-50 -mx-3 px-3">
+                      <span className="text-orange-700">Plus: Buy Brokerage (added to cost base)</span>
+                      <span className="font-medium text-orange-600">
+                        (${result.summary.buyBrokerageAdjustment.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                      </span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Capital Gain ({result.summary.currency})</span>
-                    <span className={`font-medium ${result.summary.totalGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      ${result.summary.totalGain.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="text-gray-600">
+                      Capital Gain ({result.summary.currency})
+                      {(result.summary.sellBrokerage > 0 || result.summary.buyBrokerageAdjustment > 0) && 
+                        <span className="text-xs text-gray-400 ml-1">(after brokerage)</span>
+                      }
+                    </span>
+                    <span className={`font-medium ${result.summary.gainAfterBrokerage >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      ${result.summary.gainAfterBrokerage.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   

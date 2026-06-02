@@ -50,6 +50,8 @@ interface SoldLot {
   discount_applied: boolean
   net_gain: number
   created_at: string
+  sell_brokerage?: number
+  buy_brokerage?: number
 }
 
 interface Holding {
@@ -90,8 +92,47 @@ export default function CGTPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Brokerage State
+  const [broker, setBroker] = useState<'stake' | 'commsec' | 'cmc' | 'custom'>('stake')
+  const [customSellBrokerage, setCustomSellBrokerage] = useState<string>('')
+  const [buyBrokerageAdjustment, setBuyBrokerageAdjustment] = useState<string>('')
+  
   // Tax Estimator State
   const [baseSalary, setBaseSalary] = useState<string>('')
+
+  // Calculate sell brokerage based on broker and proceeds
+  const calculateSellBrokerage = (proceeds: number, currency: string, rate: number): number => {
+    if (broker === 'custom') {
+      return parseFloat(customSellBrokerage) || 0
+    }
+    
+    if (broker === 'stake') {
+      // Stake: $3 flat (USD for US stocks, AUD for AU stocks)
+      return 3
+    }
+    
+    if (broker === 'cmc') {
+      // CMC: $0 first trade, then $11 or 0.10%
+      // Assume not first trade
+      return Math.max(11, proceeds * 0.001)
+    }
+    
+    if (broker === 'commsec') {
+      // CommSec tiered (AUD):
+      // Need to convert to AUD for tier calculation if USD
+      let proceedsAUD = proceeds
+      if (currency === 'USD') {
+        proceedsAUD = proceeds * rate
+      }
+      
+      if (proceedsAUD <= 1000) return 5
+      if (proceedsAUD <= 10000) return 10
+      if (proceedsAUD <= 25000) return 19.95
+      return proceedsAUD * 0.0012 // 0.12%
+    }
+    
+    return 0
+  }
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -189,6 +230,7 @@ export default function CGTPage() {
     const units = parseFloat(saleUnits)
     const price = parseFloat(salePrice)
     const rate = parseFloat(exchangeRate) || 1
+    const buyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
 
     // FIFO lot selection
     const sortedLots = [...holding.lots].sort(
@@ -197,6 +239,17 @@ export default function CGTPage() {
 
     let remainingUnits = units
     const salesToCreate: Partial<SoldLot>[] = []
+    
+    // Calculate total proceeds for brokerage calculation
+    const totalGrossProceeds = units * price
+    const sellBrokerage = calculateSellBrokerage(totalGrossProceeds, holding.currency, rate)
+    
+    // Distribute brokerage proportionally across lots
+    let totalUnitsToSell = 0
+    for (const lot of sortedLots) {
+      if (totalUnitsToSell >= units) break
+      totalUnitsToSell += Math.min(units - totalUnitsToSell, lot.units)
+    }
 
     for (const lot of sortedLots) {
       if (remainingUnits <= 0) break
@@ -212,8 +265,14 @@ export default function CGTPage() {
       const purchasePriceAUD = holding.currency === 'USD' ? lot.purchase_price * rate : lot.purchase_price
       const salePriceAUD = holding.currency === 'USD' ? price * rate : price
 
-      const costBase = unitsFromThisLot * purchasePriceAUD
-      const proceeds = unitsFromThisLot * salePriceAUD
+      // Proportional brokerage for this lot
+      const lotProportion = unitsFromThisLot / totalUnitsToSell
+      const lotSellBrokerage = sellBrokerage * lotProportion
+      const lotBuyBrokerageAdj = buyBrokerageAdj * lotProportion
+
+      // Calculate with brokerage
+      const costBase = (unitsFromThisLot * purchasePriceAUD) + lotBuyBrokerageAdj
+      const proceeds = (unitsFromThisLot * salePriceAUD) - lotSellBrokerage
       const grossGain = proceeds - costBase
       const discountApplied = heldOver12Months && grossGain > 0
       const netGain = discountApplied ? grossGain * 0.5 : grossGain
@@ -237,6 +296,8 @@ export default function CGTPage() {
         held_over_12_months: heldOver12Months,
         discount_applied: discountApplied,
         net_gain: netGain,
+        sell_brokerage: lotSellBrokerage,
+        buy_brokerage: lotBuyBrokerageAdj,
       })
 
       remainingUnits -= unitsFromThisLot
@@ -288,6 +349,9 @@ export default function CGTPage() {
     setSelectedHolding('')
     setSaleUnits('')
     setSalePrice('')
+    setBroker('stake')
+    setCustomSellBrokerage('')
+    setBuyBrokerageAdjustment('')
     setSubmitting(false)
     loadData()
   }
@@ -334,6 +398,17 @@ export default function CGTPage() {
   const totalTax = incomeTax + medicareLevyFull
   const marginalRate = getMarginalRate(taxableIncome)
   const taxOnCGT = currentFYSummary.netCapitalGain * (marginalRate / 100)
+
+  // Preview calculation for modal
+  const selectedHoldingData = holdings.find(h => h.id === selectedHolding)
+  const previewUnits = parseFloat(saleUnits) || 0
+  const previewPrice = parseFloat(salePrice) || 0
+  const previewRate = parseFloat(exchangeRate) || 1
+  const previewGrossProceeds = previewUnits * previewPrice
+  const previewSellBrokerage = selectedHoldingData 
+    ? calculateSellBrokerage(previewGrossProceeds, selectedHoldingData.currency, previewRate)
+    : 0
+  const previewBuyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
 
   if (loading) {
     return (
@@ -412,7 +487,7 @@ export default function CGTPage() {
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
             Holdings sold after 12+ months receive a 50% CGT discount. 
-            Losses are offset against short-term gains first.
+            Losses are offset against short-term gains first. Brokerage fees are included in cost base/proceeds.
           </span>
         </div>
       </div>
@@ -555,7 +630,7 @@ export default function CGTPage() {
                               </div>
                             </div>
 
-                            <div className="mt-2 flex items-center gap-4 text-xs">
+                            <div className="mt-2 flex items-center gap-4 text-xs flex-wrap">
                               <div className={`flex items-center gap-1 ${sale.gross_gain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                                 {sale.gross_gain >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 <span>Gross: {formatCurrency(sale.gross_gain)}</span>
@@ -568,6 +643,11 @@ export default function CGTPage() {
                               {sale.held_over_12_months && (
                                 <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">
                                   12+ months
+                                </span>
+                              )}
+                              {(sale.sell_brokerage || sale.buy_brokerage) && (
+                                <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs">
+                                  Brokerage incl.
                                 </span>
                               )}
                               <span className={`font-semibold ${sale.net_gain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
@@ -631,7 +711,7 @@ export default function CGTPage() {
                       const totalUnits = h.lots.reduce((sum, l) => sum + l.units, 0)
                       return (
                         <option key={h.id} value={h.id}>
-                          {h.ticker} - {h.name} ({totalUnits.toLocaleString()} units)
+                          {h.ticker} ({h.currency}) - {h.name} ({totalUnits.toLocaleString()} units)
                         </option>
                       )
                     })}
@@ -665,7 +745,7 @@ export default function CGTPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sale Price per Unit ({holdings.find(h => h.id === selectedHolding)?.currency || 'USD'})
+                  Sale Price per Unit ({selectedHoldingData?.currency || 'USD'})
                 </label>
                 <input
                   type="number"
@@ -677,7 +757,7 @@ export default function CGTPage() {
                 />
               </div>
 
-              {holdings.find(h => h.id === selectedHolding)?.currency === 'USD' && (
+              {selectedHoldingData?.currency === 'USD' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Exchange Rate (AUD per USD)
@@ -695,6 +775,87 @@ export default function CGTPage() {
                   </p>
                 </div>
               )}
+
+              {/* Brokerage Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Brokerage Fees</label>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Broker</label>
+                    <select
+                      value={broker}
+                      onChange={(e) => setBroker(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="stake">Stake ($3 flat)</option>
+                      <option value="commsec">CommSec (tiered: $5-0.12%)</option>
+                      <option value="cmc">CMC ($11 or 0.10%)</option>
+                      <option value="custom">Custom amount</option>
+                    </select>
+                  </div>
+
+                  {broker === 'custom' && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Sell Brokerage</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input
+                          type="number"
+                          value={customSellBrokerage}
+                          onChange={(e) => setCustomSellBrokerage(e.target.value)}
+                          placeholder="0.00"
+                          step="0.01"
+                          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Buy Brokerage Adjustment (if not in purchase price)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                      <input
+                        type="number"
+                        value={buyBrokerageAdjustment}
+                        onChange={(e) => setBuyBrokerageAdjustment(e.target.value)}
+                        placeholder="0.00"
+                        step="0.01"
+                        className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Add if purchase price didn't include brokerage
+                    </p>
+                  </div>
+
+                  {/* Brokerage Preview */}
+                  {previewUnits > 0 && previewPrice > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs">
+                      <p className="font-medium text-orange-800 mb-1">Brokerage Preview</p>
+                      <div className="space-y-1 text-orange-700">
+                        <div className="flex justify-between">
+                          <span>Sell Brokerage:</span>
+                          <span>${previewSellBrokerage.toFixed(2)}</span>
+                        </div>
+                        {previewBuyBrokerageAdj > 0 && (
+                          <div className="flex justify-between">
+                            <span>Buy Brokerage Adj:</span>
+                            <span>${previewBuyBrokerageAdj.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-medium border-t border-orange-300 pt-1">
+                          <span>Total Brokerage:</span>
+                          <span>${(previewSellBrokerage + previewBuyBrokerageAdj).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <button
                 onClick={handleAddSale}
