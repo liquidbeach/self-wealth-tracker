@@ -570,12 +570,6 @@ export default function CGTPage() {
     return acc
   }, {} as Record<string, SoldLot[]>)
 
-  const currentFY = new Date().getMonth() >= 6 
-    ? `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
-    : `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`
-  
-  const currentFYSummary = calculateTaxSummary(soldLots, currentFY)
-
   const formatCurrency = (value: number) => 
     `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
