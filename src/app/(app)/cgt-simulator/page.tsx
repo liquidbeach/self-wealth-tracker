@@ -50,11 +50,24 @@ interface SimulationResult {
     totalCGT: number
     netProceeds: number
     remainingUnits: number
+    // Loss offset fields
+    lossesApplied: number
+    taxableGainAfterLosses: number
+    cgtAfterLosses: number
+    netProceedsAfterLosses: number
+    cgtSavings: number
   }
 }
 
 const TAX_RATE = 0.325 // 32.5% marginal rate
 const DISCOUNT_DAYS = 365 // 12 months for CGT discount
+
+// Australian Financial Year: July 1 - June 30
+const getCurrentFY = () => {
+  const now = new Date()
+  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  return { start: new Date(year, 6, 1), end: new Date(year + 1, 5, 30), label: `FY${year}-${year + 1}` }
+}
 
 export default function CGTSimulatorPage() {
   const [holdings, setHoldings] = useState<Holding[]>([])
@@ -64,10 +77,15 @@ export default function CGTSimulatorPage() {
   const [inputValue, setInputValue] = useState<string>('')
   const [currentPrice, setCurrentPrice] = useState<string>('')
   const [result, setResult] = useState<SimulationResult | null>(null)
+  
+  // Capital losses state
+  const [existingLosses, setExistingLosses] = useState<number>(0) // From CGT tracker (current FY)
+  const [carriedLosses, setCarriedLosses] = useState<string>('') // Manual input for carried forward losses
+  const [applyLosses, setApplyLosses] = useState<boolean>(true)
 
   // Fetch holdings with lots directly from Supabase
   useEffect(() => {
-    const fetchHoldings = async () => {
+    const fetchData = async () => {
       try {
         const supabase = createClient()
         
@@ -78,7 +96,7 @@ export default function CGTSimulatorPage() {
           return
         }
 
-        // Fetch holdings with stocks and lots
+        // Fetch holdings with lots
         const { data: holdingsData, error: holdingsError } = await supabase
           .from('holdings')
           .select('*, lots(*)')
@@ -86,36 +104,65 @@ export default function CGTSimulatorPage() {
 
         if (holdingsError) {
           console.error('Error fetching holdings:', holdingsError)
-          setLoading(false)
-          return
+        } else {
+          // Transform data to expected format
+          const transformedHoldings: Holding[] = (holdingsData || []).map((h: any) => {
+            const lots = h.lots || []
+            const totalUnits = lots.reduce((sum: number, lot: any) => sum + (lot.units || 0), 0)
+            const totalCost = lots.reduce((sum: number, lot: any) => sum + ((lot.units || 0) * (lot.purchase_price || 0)), 0)
+            const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
+
+            return {
+              id: h.id,
+              stock_id: h.id,
+              ticker: h.ticker || 'Unknown',
+              name: h.name || 'Unknown',
+              total_units: totalUnits,
+              average_price: avgPrice,
+              lots: lots
+            }
+          }).filter((h: Holding) => h.total_units > 0)
+
+          setHoldings(transformedHoldings)
         }
 
-        // Transform data to expected format
-        const transformedHoldings: Holding[] = (holdingsData || []).map((h: any) => {
-          const lots = h.lots || []
-          const totalUnits = lots.reduce((sum: number, lot: any) => sum + (lot.units || 0), 0)
-          const totalCost = lots.reduce((sum: number, lot: any) => sum + ((lot.units || 0) * (lot.purchase_price || 0)), 0)
-          const avgPrice = totalUnits > 0 ? totalCost / totalUnits : 0
+        // Fetch existing capital losses from cgt_sales in current FY
+        const fy = getCurrentFY()
+        const { data: salesData, error: salesError } = await supabase
+          .from('cgt_sales')
+          .select('net_gain, sale_date')
+          .eq('user_id', user.id)
+          .gte('sale_date', fy.start.toISOString().split('T')[0])
+          .lte('sale_date', fy.end.toISOString().split('T')[0])
 
-          return {
-            id: h.id,
-            stock_id: h.stock_id,
-            ticker: h.ticker || 'Unknown',
-            name: h.name || 'Unknown',
-            total_units: totalUnits,
-            average_price: avgPrice,
-            lots: lots
-          }
-        }).filter((h: Holding) => h.total_units > 0)
+        if (!salesError && salesData) {
+          // Calculate net position: sum all net_gain values
+          // Negative net_gain = loss, Positive net_gain = gain
+          let totalLosses = 0
+          let totalGains = 0
+          
+          salesData.forEach((sale: any) => {
+            const netGain = sale.net_gain || 0
+            if (netGain < 0) {
+              totalLosses += Math.abs(netGain)
+            } else {
+              totalGains += netGain
+            }
+          })
+          
+          // Net losses available = total losses - any gains already offset
+          // If you have $508.70 losses and $0 gains, you have $508.70 to offset future gains
+          const netLossesAvailable = Math.max(0, totalLosses - totalGains)
+          setExistingLosses(netLossesAvailable)
+        }
 
-        setHoldings(transformedHoldings)
       } catch (error) {
-        console.error('Error fetching holdings:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
-    fetchHoldings()
+    fetchData()
   }, [])
 
   // Sort lots by FIFO (oldest first)
@@ -225,16 +272,34 @@ export default function CGTSimulatorPage() {
       remainingToSell -= unitsFromThisLot
     }
 
-    // Calculate summary
+    // Calculate summary (before losses)
+    const totalTaxableGain = lotsUsed.reduce((sum, l) => sum + l.taxableGain, 0)
+    const totalCGT = lotsUsed.reduce((sum, l) => sum + l.cgt, 0)
+    const grossProceeds = lotsUsed.reduce((sum, l) => sum + l.proceeds, 0)
+    
+    // Calculate loss offset
+    const availableLosses = existingLosses + (parseFloat(carriedLosses) || 0)
+    const lossesApplied = applyLosses ? Math.min(availableLosses, totalTaxableGain) : 0
+    const taxableGainAfterLosses = Math.max(0, totalTaxableGain - lossesApplied)
+    const cgtAfterLosses = taxableGainAfterLosses * TAX_RATE
+    const cgtSavings = totalCGT - cgtAfterLosses
+    const netProceedsAfterLosses = grossProceeds - cgtAfterLosses
+    
     const summary = {
       totalUnits: lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
-      grossProceeds: lotsUsed.reduce((sum, l) => sum + l.proceeds, 0),
+      grossProceeds,
       totalCostBase: lotsUsed.reduce((sum, l) => sum + l.costBase, 0),
       totalGain: lotsUsed.reduce((sum, l) => sum + l.gain, 0),
-      totalTaxableGain: lotsUsed.reduce((sum, l) => sum + l.taxableGain, 0),
-      totalCGT: lotsUsed.reduce((sum, l) => sum + l.cgt, 0),
+      totalTaxableGain,
+      totalCGT,
       netProceeds: lotsUsed.reduce((sum, l) => sum + l.proceeds - l.cgt, 0),
-      remainingUnits: totalAvailable - lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0)
+      remainingUnits: totalAvailable - lotsUsed.reduce((sum, l) => sum + l.unitsUsed, 0),
+      // Loss offset fields
+      lossesApplied,
+      taxableGainAfterLosses,
+      cgtAfterLosses,
+      netProceedsAfterLosses,
+      cgtSavings
     }
 
     setResult({ lotsUsed, summary })
@@ -304,6 +369,7 @@ export default function CGTSimulatorPage() {
             <ul className="space-y-1 text-blue-700">
               <li>• Uses FIFO (First In, First Out) — oldest lots sell first</li>
               <li>• Holdings held 12+ months get 50% CGT discount</li>
+              <li>• Capital losses offset gains — current FY losses auto-loaded from CGT Tracker</li>
               <li>• Tax rate: 32.5% (your marginal rate)</li>
               <li>• "Extract Cost Base" mode calculates units to de-risk while leaving runners</li>
             </ul>
@@ -428,6 +494,64 @@ export default function CGTSimulatorPage() {
                 </div>
               )}
 
+              {/* Capital Losses Offset Section */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-700">Capital Losses Offset</label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={applyLosses}
+                      onChange={(e) => setApplyLosses(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-gray-600">Apply losses</span>
+                  </label>
+                </div>
+                
+                {/* Current FY Losses (from CGT Tracker) */}
+                <div className="p-3 bg-gray-50 rounded-lg mb-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-500">Current FY Net Losses</p>
+                      <p className="text-xs text-gray-400">(from CGT Tracker)</p>
+                    </div>
+                    <p className={`font-semibold ${existingLosses > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      {existingLosses > 0 ? `-${formatCurrency(existingLosses)}` : '$0.00'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Carried Forward Losses (manual input) */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Additional/Carried Forward Losses
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={carriedLosses}
+                      onChange={(e) => setCarriedLosses(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Enter losses from prior years or other sources</p>
+                </div>
+
+                {/* Total Available Losses */}
+                {(existingLosses > 0 || parseFloat(carriedLosses) > 0) && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between">
+                    <span className="text-sm font-medium text-gray-600">Total Losses Available:</span>
+                    <span className="text-sm font-bold text-red-600">
+                      {formatCurrency(existingLosses + (parseFloat(carriedLosses) || 0))}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Run Simulation Button */}
               <button
                 onClick={runSimulation}
@@ -526,14 +650,55 @@ export default function CGTSimulatorPage() {
                     <span className="text-gray-600">Taxable Gain (after discounts)</span>
                     <span className="font-medium">{formatCurrency(result.summary.totalTaxableGain)}</span>
                   </div>
+                  
+                  {/* Loss Offset Section */}
+                  {result.summary.lossesApplied > 0 && (
+                    <>
+                      <div className="flex justify-between py-2 border-b border-gray-100 bg-red-50 -mx-3 px-3">
+                        <span className="text-red-700">Less: Capital Losses Applied</span>
+                        <span className="font-medium text-red-600">({formatCurrency(result.summary.lossesApplied)})</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600 font-medium">Net Taxable Gain</span>
+                        <span className="font-medium">{formatCurrency(result.summary.taxableGainAfterLosses)}</span>
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">CGT Owed (@ 32.5%)</span>
-                    <span className="font-medium text-red-600">({formatCurrency(result.summary.totalCGT)})</span>
+                    <span className="text-gray-600">
+                      CGT Owed (@ 32.5%)
+                      {result.summary.lossesApplied > 0 && <span className="text-xs text-gray-400 ml-1">(after losses)</span>}
+                    </span>
+                    <span className="font-medium text-red-600">
+                      ({formatCurrency(result.summary.lossesApplied > 0 ? result.summary.cgtAfterLosses : result.summary.totalCGT)})
+                    </span>
                   </div>
+                  
+                  {/* CGT Savings from Losses */}
+                  {result.summary.cgtSavings > 0 && (
+                    <div className="flex justify-between py-2 bg-green-50 -mx-3 px-3 rounded">
+                      <span className="text-green-700 flex items-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        CGT Savings from Losses
+                      </span>
+                      <span className="font-medium text-green-600">{formatCurrency(result.summary.cgtSavings)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between py-3 bg-emerald-50 rounded-lg px-3 mt-2">
                     <span className="font-semibold text-emerald-900">Net Proceeds</span>
-                    <span className="font-bold text-lg text-emerald-700">{formatCurrency(result.summary.netProceeds)}</span>
+                    <span className="font-bold text-lg text-emerald-700">
+                      {formatCurrency(result.summary.lossesApplied > 0 ? result.summary.netProceedsAfterLosses : result.summary.netProceeds)}
+                    </span>
                   </div>
+                  
+                  {/* Comparison note */}
+                  {result.summary.cgtSavings > 0 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Without losses: Net would be {formatCurrency(result.summary.netProceeds)} (saving {formatCurrency(result.summary.cgtSavings)})
+                    </p>
+                  )}
                 </div>
               </div>
 
