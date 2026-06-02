@@ -355,6 +355,38 @@ export default function TradeSimulatorPage() {
         )}
       </div>
 
+      {/* Summary Row */}
+      {calc.entry > 0 && calc.exit > 0 && calc.qty > 0 && (
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+            <div>
+              <p className="text-xs text-slate-400 mb-1">TICKER</p>
+              <p className="text-lg font-bold text-white font-mono">{ticker || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">CAPITAL DEPLOYED</p>
+              <p className="text-lg font-bold text-white font-mono">{formatCurrency(calc.totalInvested)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">EXIT VALUE</p>
+              <p className="text-lg font-bold text-white font-mono">{formatCurrency(calc.totalExit)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">GROSS GAIN</p>
+              <p className={`text-lg font-bold font-mono ${calc.grossGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {formatCurrency(calc.grossGain)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">UPSIDE</p>
+              <p className={`text-lg font-bold font-mono ${calc.upsidePct >= 15 ? 'text-emerald-400' : 'text-orange-400'}`}>
+                {formatPercent(calc.upsidePct)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hurdle Status Banner */}
       {calc.upsidePct > 0 && (
         <div className={`rounded-xl p-4 border ${
@@ -389,7 +421,7 @@ export default function TradeSimulatorPage() {
       )}
 
       {/* CGT Scenario Cards */}
-      {calc.grossGain !== 0 && (
+      {calc.entry > 0 && calc.exit > 0 && calc.qty > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Short Term (<12 months) */}
           <div className={`rounded-xl border-t-4 ${calc.grossGain > 0 ? 'border-t-orange-400' : 'border-t-red-400'} bg-white border border-gray-200 p-4`}>
@@ -498,7 +530,7 @@ export default function TradeSimulatorPage() {
       )}
 
       {/* 12-Month Hold Advantage */}
-      {calc.grossGain > 0 && (
+      {calc.entry > 0 && calc.exit > 0 && calc.qty > 0 && calc.grossGain > 0 && (
         <div className="bg-slate-800 rounded-xl p-4">
           <h4 className="text-sm font-semibold text-cyan-400 mb-3 flex items-center gap-2">
             <Target className="w-4 h-4" />
@@ -522,7 +554,7 @@ export default function TradeSimulatorPage() {
       )}
 
       {/* Exit Scenario Table */}
-      {exitScenarios.length > 0 && (
+      {calc.entry > 0 && calc.qty > 0 && exitScenarios.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <h4 className="text-sm font-semibold text-purple-600 flex items-center gap-2">
