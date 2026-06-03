@@ -74,40 +74,44 @@ export default function ActivityPage() {
     try {
       const supabase = createClient()
       
-      // Load holdings with lots nested (same pattern as CGT Tracker)
-      const { data: holdingsData } = await supabase
-        .from('holdings')
-        .select('id, ticker, name, lots(id, units, purchase_price, purchase_date, brokerage)')
-        .order('ticker', { ascending: true })
+      // Load BUYs from lots with holdings relationship via foreign key
+      const { data: lotsData, error: lotsError } = await supabase
+        .from('lots')
+        .select('id, holding_id, units, purchase_price, purchase_date, holdings(ticker, name)')
+        .order('purchase_date', { ascending: false })
+      
+      if (lotsError) {
+        console.error('Lots fetch error:', lotsError)
+      }
       
       // Load SELLs from cgt_sales
-      const { data: salesData } = await supabase
+      const { data: salesData, error: salesError } = await supabase
         .from('cgt_sales')
         .select('*')
         .order('sale_date', { ascending: false })
       
-      // Transform BUYs - flatten holdings → lots
-      const buys: Transaction[] = []
-      ;(holdingsData || []).forEach((holding: { id: string; ticker: string; name: string; lots: Array<{ id: string; units: number; purchase_price: number; purchase_date: string; brokerage: number | null }> | null }) => {
-        if (holding.lots && holding.lots.length > 0) {
-          holding.lots.forEach(lot => {
-            buys.push({
-              id: `buy-${lot.id}`,
-              type: 'BUY' as const,
-              ticker: holding.ticker,
-              name: holding.name,
-              date: lot.purchase_date,
-              units: lot.units,
-              price: lot.purchase_price,
-              total: lot.units * lot.purchase_price,
-              brokerage: lot.brokerage || 0,
-            })
-          })
-        }
-      })
+      if (salesError) {
+        console.error('Sales fetch error:', salesError)
+      }
+      
+      console.log('Lots data:', lotsData)
+      console.log('Sales data:', salesData)
+      
+      // Transform BUYs
+      const buys: Transaction[] = (lotsData || []).map((lot: any) => ({
+        id: `buy-${lot.id}`,
+        type: 'BUY' as const,
+        ticker: lot.holdings?.ticker || 'Unknown',
+        name: lot.holdings?.name || 'Unknown',
+        date: lot.purchase_date,
+        units: lot.units,
+        price: lot.purchase_price,
+        total: lot.units * lot.purchase_price,
+        brokerage: 0,
+      }))
       
       // Transform SELLs
-      const sells: Transaction[] = (salesData || []).map((sale: { id: string; ticker: string; name?: string; sale_date: string; units: number; proceeds: number; sell_brokerage?: number; buy_brokerage?: number; gross_gain: number; cost_base: number }) => ({
+      const sells: Transaction[] = (salesData || []).map((sale: any) => ({
         id: `sell-${sale.id}`,
         type: 'SELL' as const,
         ticker: sale.ticker,

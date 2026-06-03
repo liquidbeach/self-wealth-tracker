@@ -135,43 +135,43 @@ export default function OperatingCostsPage() {
         costs.other_ai_tools + 
         costs.other_costs
 
-      // Check if record exists for this month
+      // Check if record exists for this month (use maybeSingle to avoid 404)
       const { data: existing } = await supabase
         .from('operating_costs')
         .select('id')
         .eq('user_id', user.id)
         .eq('month', selectedMonth)
-        .single()
+        .maybeSingle()
+
+      const costData = {
+        supabase: costs.supabase,
+        vercel: costs.vercel,
+        api_services: costs.api_services,
+        claude_subscription: costs.claude_subscription,
+        other_ai_tools: costs.other_ai_tools,
+        other_costs: costs.other_costs,
+        total_monthly: total,
+      }
 
       if (existing) {
         // Update existing record
-        await supabase
+        const { error } = await supabase
           .from('operating_costs')
-          .update({
-            supabase: costs.supabase,
-            vercel: costs.vercel,
-            api_services: costs.api_services,
-            claude_subscription: costs.claude_subscription,
-            other_ai_tools: costs.other_ai_tools,
-            other_costs: costs.other_costs,
-            total_monthly: total,
-          })
+          .update(costData)
           .eq('id', existing.id)
+        
+        if (error) console.error('Update error:', error)
       } else {
         // Insert new record
-        await supabase
+        const { error } = await supabase
           .from('operating_costs')
           .insert({
             user_id: user.id,
             month: selectedMonth,
-            supabase: costs.supabase,
-            vercel: costs.vercel,
-            api_services: costs.api_services,
-            claude_subscription: costs.claude_subscription,
-            other_ai_tools: costs.other_ai_tools,
-            other_costs: costs.other_costs,
-            total_monthly: total,
+            ...costData,
           })
+        
+        if (error) console.error('Insert error:', error)
       }
       
       setSaved(true)
