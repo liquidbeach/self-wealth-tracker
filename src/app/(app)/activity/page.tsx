@@ -189,7 +189,7 @@ export default function ActivityPage() {
   }
 
   // Get unique tickers for filter dropdown
-  const uniqueTickers = [...new Set(transactions.map(t => t.ticker))].sort()
+  const uniqueTickers = Array.from(new Set(transactions.map(t => t.ticker))).sort()
 
   // Calculate filtered stats
   const filteredStats = {

@@ -21,29 +21,38 @@ import {
   Menu,
   X,
   Calculator,
+  Globe,
+  Target,
+  Activity,  
 } from 'lucide-react'
+
 import { useState, useEffect } from 'react'
-import { Globe } from 'lucide-react'
-import { Target } from 'lucide-react'
-import { Activity} from 'lucide-react'
 
 const navigation = [
+  // Core (Top Priority)
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Portfolio', href: '/portfolio', icon: Briefcase },
-  { name: 'Search', href: '/search', icon: Search },
-  { name: 'Momentum', href: '/momentum', icon: TrendingUp },
-  { name: 'Assessor', href: '/assessor', icon: Zap },
-  { name: 'Journal', href: '/journal', icon: BookOpen },
-  { name: 'Trade Simulator', href: '/trade-simulator', icon: Target },
   { name: 'CGT Tracker', href: '/cgt', icon: Calculator },
   { name: 'Activity', href: '/activity', icon: Activity },
+  { name: 'Performance', href: '/performance', icon: TrendingUp },
+  
+  // Analysis & Tools
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'AI Universe', href: '/universe', icon: Globe },
+  { name: 'Search', href: '/search', icon: Search },
+  { name: 'Momentum', href: '/momentum', icon: TrendingUp },
+  
+  // Simulators
+  { name: 'Trade Simulator', href: '/trade-simulator', icon: Target },
+  { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
+  
+  // Research & Risk
+  { name: 'Assessor', href: '/assessor', icon: Zap },
+  { name: 'Journal', href: '/journal', icon: BookOpen },
   { name: 'Health', href: '/health', icon: Heart },
   { name: 'Risk', href: '/risk', icon: AlertTriangle },
-  { name: 'Settings', href: '/settings', icon: Settings },
-  { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
-  { name: 'Performance', href: '/performance', icon: Briefcase },
+  
+  // Settings (one entry - costs is a sub-page)
   { name: 'Settings', href: '/settings/costs', icon: Settings },
 ]
 
