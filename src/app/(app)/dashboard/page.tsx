@@ -15,6 +15,9 @@ import {
   BookOpen,
   AlertCircle,
   Calculator,
+  ChevronDown,
+  Check,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -30,6 +33,38 @@ interface DashboardStats {
   sectorBreakdown: { sector: string; value: number; percent: number }[]
 }
 
+interface HoldingWithSector {
+  id: string
+  ticker: string
+  name: string
+  sector: string | null
+}
+
+// Sector definitions - consistent across Dashboard & Performance Report
+const SECTORS: Record<string, { name: string; color: string }> = {
+  'AI Infrastructure': { name: 'AI Infrastructure', color: 'from-purple-500 to-violet-500' },
+  'ETF': { name: 'ETFs (Base Returns)', color: 'from-blue-500 to-cyan-500' },
+  'Mining': { name: 'Mining', color: 'from-orange-500 to-amber-500' },
+  'Physical Infrastructure': { name: 'Physical Infrastructure', color: 'from-emerald-500 to-teal-500' },
+  'Technology': { name: 'Technology', color: 'from-cyan-500 to-blue-500' },
+  'Financials': { name: 'Financials', color: 'from-green-500 to-emerald-500' },
+  'Materials': { name: 'Materials', color: 'from-yellow-500 to-orange-500' },
+  'Diversified': { name: 'Diversified', color: 'from-indigo-500 to-purple-500' },
+  'Other': { name: 'Other', color: 'from-slate-400 to-gray-500' },
+}
+
+const SECTOR_OPTIONS = [
+  'AI Infrastructure',
+  'ETF',
+  'Mining',
+  'Physical Infrastructure',
+  'Technology',
+  'Financials',
+  'Materials',
+  'Diversified',
+  'Other',
+]
+
 // Exchange rates to AUD (fallback values, will be fetched live)
 const DEFAULT_RATES: Record<string, number> = {
   AUD: 1,
@@ -39,7 +74,6 @@ const DEFAULT_RATES: Record<string, number> = {
 
 async function fetchExchangeRates(): Promise<Record<string, number>> {
   try {
-    // Try to fetch live rates - you can replace with your preferred API
     const response = await fetch('/api/exchange-rates')
     if (response.ok) {
       const data = await response.json()
@@ -74,6 +108,11 @@ export default function DashboardPage() {
     holdingsCount: 0, watchlistCount: 0, topGainers: [], topLosers: [], sectorBreakdown: [],
   })
   const [cashBalances, setCashBalances] = useState({ AUD: 0, USD: 0, INR: 0 })
+  
+  // Sector editing state
+  const [showSectorEdit, setShowSectorEdit] = useState(false)
+  const [holdingsForSector, setHoldingsForSector] = useState<HoldingWithSector[]>([])
+  const [editingSectorId, setEditingSectorId] = useState<string | null>(null)
 
   const loadDashboard = useCallback(async () => {
     const supabase = createClient()
@@ -91,6 +130,16 @@ export default function DashboardPage() {
       if (c.currency in cash) cash[c.currency as keyof typeof cash] += Number(c.balance)
     })
     setCashBalances(cash)
+    
+    // Store holdings for sector editing
+    if (holdingsData) {
+      setHoldingsForSector(holdingsData.map((h: any) => ({
+        id: h.id,
+        ticker: h.ticker,
+        name: h.name,
+        sector: h.sector,
+      })))
+    }
 
     if (!holdingsData || holdingsData.length === 0) {
       setStats({ totalCost: 0, totalValue: 0, totalPnL: 0, totalPnLPercent: 0, holdingsCount: 0, watchlistCount: watchlistCount || 0, topGainers: [], topLosers: [], sectorBreakdown: [] })
@@ -145,11 +194,11 @@ export default function DashboardPage() {
     const sectorMap = new Map<string, number>()
     holdingsWithPrices.forEach(h => {
       const sector = h.sector || 'Other'
-      sectorMap.set(sector, (sectorMap.get(sector) || 0) + h.value)
+      sectorMap.set(sector, (sectorMap.get(sector) || 0) + (h.valueAUD || 0))
     })
     const sectorBreakdown = Array.from(sectorMap.entries())
       .map(([sector, value]) => ({ sector, value, percent: totalValue > 0 ? (value / totalValue) * 100 : 0 }))
-      .sort((a, b) => b.value - a.value).slice(0, 5)
+      .sort((a, b) => b.value - a.value).slice(0, 6)
 
     setStats({ totalCost, totalValue, totalPnL, totalPnLPercent, holdingsCount: holdingsWithPrices.filter(h => h.cost > 0).length, watchlistCount: watchlistCount || 0, topGainers, topLosers, sectorBreakdown })
     setLastUpdate(new Date())
@@ -158,6 +207,21 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { loadDashboard() }, [loadDashboard])
+
+  // Update holding sector
+  const updateSector = async (holdingId: string, newSector: string) => {
+    const supabase = createClient()
+    await supabase.from('holdings').update({ sector: newSector }).eq('id', holdingId)
+    
+    // Update local state
+    setHoldingsForSector(prev => prev.map(h => 
+      h.id === holdingId ? { ...h, sector: newSector } : h
+    ))
+    setEditingSectorId(null)
+    
+    // Refresh dashboard to update sector breakdown
+    loadDashboard()
+  }
 
   const formatCompact = (value: number) => {
     if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
@@ -320,32 +384,83 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Sector Breakdown - Dark */}
+        {/* Sector Breakdown - Dark with Edit */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-gray-400" />
-            Sector Allocation
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-gray-400" />
+              Sector Allocation
+            </h3>
+            <button
+              onClick={() => setShowSectorEdit(!showSectorEdit)}
+              className="text-xs text-cyan-400 hover:text-cyan-300"
+            >
+              {showSectorEdit ? 'Done' : 'Edit'}
+            </button>
+          </div>
           
-          {stats.sectorBreakdown.length > 0 ? (
-            <div className="space-y-2">
-              {stats.sectorBreakdown.map(s => (
-                <div key={s.sector}>
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs text-gray-300 truncate max-w-[150px]">{s.sector}</span>
-                    <span className="text-xs font-semibold text-white">{s.percent.toFixed(0)}%</span>
-                  </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(s.percent, 100)}%` }} />
-                  </div>
+          {showSectorEdit ? (
+            /* Sector Edit Mode */
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {holdingsForSector.map(h => (
+                <div key={h.id} className="flex items-center justify-between bg-slate-700 rounded-lg px-3 py-2">
+                  <span className="text-sm font-mono text-white">{h.ticker}</span>
+                  
+                  {editingSectorId === h.id ? (
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={h.sector || 'Other'}
+                        onChange={(e) => updateSector(h.id, e.target.value)}
+                        className="text-xs bg-slate-600 text-white border border-slate-500 rounded px-2 py-1"
+                        autoFocus
+                      >
+                        {SECTOR_OPTIONS.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => setEditingSectorId(null)} className="p-1 text-gray-400 hover:text-white">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setEditingSectorId(h.id)}
+                      className="text-xs px-2 py-1 bg-slate-600 text-gray-300 rounded hover:bg-slate-500"
+                    >
+                      {h.sector || 'Other'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500">
-              <PieChart className="w-6 h-6 mx-auto mb-1 opacity-50" />
-              <p className="text-xs">Add holdings to see allocation</p>
-            </div>
+            /* Sector Display Mode */
+            stats.sectorBreakdown.length > 0 ? (
+              <div className="space-y-2">
+                {stats.sectorBreakdown.map(s => {
+                  const sectorInfo = SECTORS[s.sector] || SECTORS['Other']
+                  return (
+                    <div key={s.sector}>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs text-gray-300 truncate max-w-[150px]">{sectorInfo.name}</span>
+                        <span className="text-xs font-semibold text-white">{s.percent.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${sectorInfo.color} rounded-full transition-all`} 
+                          style={{ width: `${Math.min(s.percent, 100)}%` }} 
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <PieChart className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">Add holdings to see allocation</p>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -353,7 +468,7 @@ export default function DashboardPage() {
       {/* Quick Actions - Dark */}
       <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
         <h3 className="text-sm font-semibold text-white mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 sm:gap-3">
           <Link href="/search" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
             <Search className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">Search</p>
@@ -373,6 +488,10 @@ export default function DashboardPage() {
           <Link href="/cgt" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
             <Calculator className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
             <p className="text-xs font-medium text-white">CGT</p>
+          </Link>
+          <Link href="/performance" className="bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-colors">
+            <Briefcase className="w-5 h-5 mx-auto mb-1 text-cyan-400" />
+            <p className="text-xs font-medium text-white">Performance</p>
           </Link>
         </div>
       </div>

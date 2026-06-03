@@ -41,6 +41,7 @@ const navigation = [
   { name: 'Risk', href: '/risk', icon: AlertTriangle },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
+  { name: 'Performance', href: '/performance', icon: Briefcase },
 ]
 
 export default function Sidebar() {
