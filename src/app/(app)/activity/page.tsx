@@ -79,8 +79,8 @@ export default function ActivityPage() {
         .from('holdings')
         .select('id, ticker, name')
       
-      const holdingsMap = new Map(
-        (holdingsData || []).map((h: any) => [h.id, { ticker: h.ticker, name: h.name }])
+      const holdingsMap = new Map<string, { ticker: string; name: string }>(
+        (holdingsData || []).map((h: { id: string; ticker: string; name: string }) => [h.id, { ticker: h.ticker, name: h.name }])
       )
       
       // Load BUYs from lots
@@ -96,7 +96,7 @@ export default function ActivityPage() {
         .order('sale_date', { ascending: false })
       
       // Transform BUYs (join with holdings map)
-      const buys: Transaction[] = (lotsData || []).map((lot: any) => {
+      const buys: Transaction[] = (lotsData || []).map((lot: { id: string; holding_id: string; units: number; purchase_price: number; purchase_date: string; brokerage: number | null }) => {
         const holding = holdingsMap.get(lot.holding_id) || { ticker: 'Unknown', name: 'Unknown' }
         return {
           id: `buy-${lot.id}`,
@@ -112,7 +112,7 @@ export default function ActivityPage() {
       })
       
       // Transform SELLs
-      const sells: Transaction[] = (salesData || []).map((sale: any) => ({
+      const sells: Transaction[] = (salesData || []).map((sale: { id: string; ticker: string; name?: string; sale_date: string; units: number; proceeds: number; sell_brokerage?: number; buy_brokerage?: number; gross_gain: number; cost_base: number }) => ({
         id: `sell-${sale.id}`,
         type: 'SELL' as const,
         ticker: sale.ticker,
