@@ -117,15 +117,26 @@ export default function OperatingCostsPage() {
 
   const saveCosts = async () => {
     setSaving(true)
+    console.log('Starting save for month:', selectedMonth)
+    console.log('Costs to save:', costs)
+    
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
       
-      if (!user) {
-        console.error('No user')
+      if (authError) {
+        console.error('Auth error:', authError)
         setSaving(false)
         return
       }
+      
+      if (!user) {
+        console.error('No user found')
+        setSaving(false)
+        return
+      }
+      
+      console.log('User ID:', user.id)
       
       const total = 
         costs.supabase + 
@@ -136,12 +147,18 @@ export default function OperatingCostsPage() {
         costs.other_costs
 
       // Check if record exists for this month (use maybeSingle to avoid 404)
-      const { data: existing } = await supabase
+      const { data: existing, error: selectError } = await supabase
         .from('operating_costs')
         .select('id')
         .eq('user_id', user.id)
         .eq('month', selectedMonth)
         .maybeSingle()
+
+      if (selectError) {
+        console.error('Select error:', selectError)
+      }
+      
+      console.log('Existing record:', existing)
 
       const costData = {
         supabase: costs.supabase,
@@ -155,15 +172,21 @@ export default function OperatingCostsPage() {
 
       if (existing) {
         // Update existing record
-        const { error } = await supabase
+        console.log('Updating record ID:', existing.id)
+        const { error: updateError } = await supabase
           .from('operating_costs')
           .update(costData)
           .eq('id', existing.id)
         
-        if (error) console.error('Update error:', error)
+        if (updateError) {
+          console.error('Update error:', updateError)
+        } else {
+          console.log('Update successful')
+        }
       } else {
         // Insert new record
-        const { error } = await supabase
+        console.log('Inserting new record')
+        const { error: insertError } = await supabase
           .from('operating_costs')
           .insert({
             user_id: user.id,
@@ -171,7 +194,11 @@ export default function OperatingCostsPage() {
             ...costData,
           })
         
-        if (error) console.error('Insert error:', error)
+        if (insertError) {
+          console.error('Insert error:', insertError)
+        } else {
+          console.log('Insert successful')
+        }
       }
       
       setSaved(true)

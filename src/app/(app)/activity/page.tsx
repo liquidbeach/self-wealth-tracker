@@ -39,6 +39,7 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
+  const [expandedTickers, setExpandedTickers] = useState<Set<string>>(new Set())
   
   // Filters
   const [filterType, setFilterType] = useState<'ALL' | 'BUY' | 'SELL'>('ALL')
@@ -54,6 +55,18 @@ export default function ActivityPage() {
     totalSellValue: 0,
     netRealizedGain: 0,
   })
+
+  const toggleTicker = (ticker: string) => {
+    setExpandedTickers(prev => {
+      const next = new Set(prev)
+      if (next.has(ticker)) {
+        next.delete(ticker)
+      } else {
+        next.add(ticker)
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -321,7 +334,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      {/* Transaction List */}
+      {/* Transaction List - Grouped by Ticker */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
@@ -340,79 +353,136 @@ export default function ActivityPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filteredTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className={`p-4 hover:bg-gray-50 transition-colors ${
-                  tx.type === 'BUY' ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-red-400'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  {/* Left: Type + Ticker */}
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      tx.type === 'BUY' ? 'bg-emerald-100' : 'bg-red-100'
-                    }`}>
-                      {tx.type === 'BUY' ? (
-                        <ArrowDownCircle className="w-5 h-5 text-emerald-600" />
-                      ) : (
-                        <ArrowUpCircle className="w-5 h-5 text-red-600" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                          tx.type === 'BUY' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {tx.type}
-                        </span>
-                        <span className="font-mono font-bold text-gray-900">{tx.ticker}</span>
+            {/* Group transactions by ticker */}
+            {(() => {
+              // Get unique tickers in order of most recent transaction
+              const tickerOrder: string[] = []
+              const tickerMap = new Map<string, Transaction[]>()
+              
+              filteredTransactions.forEach(tx => {
+                if (!tickerMap.has(tx.ticker)) {
+                  tickerMap.set(tx.ticker, [])
+                  tickerOrder.push(tx.ticker)
+                }
+                tickerMap.get(tx.ticker)!.push(tx)
+              })
+              
+              return tickerOrder.map(ticker => {
+                const txs = tickerMap.get(ticker)!
+                const isExpanded = expandedTickers.has(ticker)
+                const buys = txs.filter(t => t.type === 'BUY')
+                const sells = txs.filter(t => t.type === 'SELL')
+                const totalBuyValue = buys.reduce((sum, t) => sum + t.total, 0)
+                const totalSellValue = sells.reduce((sum, t) => sum + t.total, 0)
+                const totalGain = sells.reduce((sum, t) => sum + (t.gain || 0), 0)
+                const firstName = txs[0]?.name || ticker
+                
+                return (
+                  <div key={ticker}>
+                    {/* Ticker Header - Clickable */}
+                    <button
+                      onClick={() => toggleTicker(ticker)}
+                      className="w-full p-4 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                        )}
+                        <div className="text-left">
+                          <span className="font-mono font-bold text-gray-900 text-lg">{ticker}</span>
+                          <p className="text-sm text-gray-500">{firstName}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500 mt-0.5">{tx.name}</p>
-                    </div>
-                  </div>
+                      
+                      <div className="flex items-center gap-4 text-right">
+                        {/* Transaction counts */}
+                        <div className="flex items-center gap-2">
+                          {buys.length > 0 && (
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-700">
+                              {buys.length} BUY{buys.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {sells.length > 0 && (
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-700">
+                              {sells.length} SELL{sells.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Total values */}
+                        <div className="hidden sm:block">
+                          {totalBuyValue > 0 && (
+                            <p className="text-sm text-gray-600">Bought: {fmt(totalBuyValue)}</p>
+                          )}
+                          {totalSellValue > 0 && (
+                            <p className="text-sm text-gray-600">Sold: {fmt(totalSellValue)}</p>
+                          )}
+                          {sells.length > 0 && (
+                            <p className={`text-xs font-medium ${totalGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {totalGain >= 0 ? '+' : ''}{fmt(totalGain)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                    
+                    {/* Expanded Transactions */}
+                    {isExpanded && (
+                      <div className="bg-gray-50 border-t border-gray-100">
+                        {txs.map((tx) => (
+                          <div
+                            key={tx.id}
+                            className={`p-4 pl-12 border-b border-gray-100 last:border-b-0 ${
+                              tx.type === 'BUY' ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-red-400'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              {/* Left: Type badge */}
+                              <div className="flex items-center gap-3">
+                                <div className={`p-1.5 rounded-full ${
+                                  tx.type === 'BUY' ? 'bg-emerald-100' : 'bg-red-100'
+                                }`}>
+                                  {tx.type === 'BUY' ? (
+                                    <ArrowDownCircle className="w-4 h-4 text-emerald-600" />
+                                  ) : (
+                                    <ArrowUpCircle className="w-4 h-4 text-red-600" />
+                                  )}
+                                </div>
+                                <div>
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                    tx.type === 'BUY' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    {tx.type}
+                                  </span>
+                                  <span className="text-sm text-gray-600 ml-2">
+                                    {tx.units.toLocaleString()} @ {fmt(tx.price)}
+                                  </span>
+                                </div>
+                              </div>
 
-                  {/* Center: Units & Price */}
-                  <div className="text-center hidden sm:block">
-                    <p className="text-sm font-medium text-gray-900">
-                      {tx.units.toLocaleString()} units
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      @ {fmt(tx.price)} each
-                    </p>
-                  </div>
-
-                  {/* Right: Total & Date */}
-                  <div className="text-right">
-                    <p className={`text-lg font-bold ${
-                      tx.type === 'BUY' ? 'text-gray-900' : 'text-gray-900'
-                    }`}>
-                      {tx.type === 'BUY' ? '-' : '+'}{fmt(tx.total)}
-                    </p>
-                    {tx.type === 'SELL' && tx.gain !== undefined && (
-                      <p className={`text-xs font-medium ${tx.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {tx.gain >= 0 ? 'Gain' : 'Loss'}: {tx.gain >= 0 ? '+' : ''}{fmt(tx.gain)}
-                      </p>
+                              {/* Right: Total & Date */}
+                              <div className="text-right">
+                                <p className="text-sm font-bold text-gray-900">
+                                  {tx.type === 'BUY' ? '-' : '+'}{fmt(tx.total)}
+                                </p>
+                                {tx.type === 'SELL' && tx.gain !== undefined && (
+                                  <p className={`text-xs ${tx.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                    {tx.gain >= 0 ? '+' : ''}{fmt(tx.gain)}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-400">{fmtDate(tx.date)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                    <p className="text-xs text-gray-400 mt-1">{fmtDate(tx.date)}</p>
                   </div>
-                </div>
-
-                {/* Mobile: Units display */}
-                <div className="mt-2 sm:hidden">
-                  <p className="text-xs text-gray-500">
-                    {tx.units.toLocaleString()} units @ {fmt(tx.price)} each
-                  </p>
-                </div>
-
-                {/* Brokerage if present */}
-                {tx.brokerage && tx.brokerage > 0 && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Brokerage: {fmt(tx.brokerage)}
-                  </p>
-                )}
-              </div>
-            ))}
+                )
+              })
+            })()}
           </div>
         )}
       </div>
