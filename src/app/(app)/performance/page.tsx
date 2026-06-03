@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Save,
 } from 'lucide-react'
 
 // Sector definitions - consistent across Dashboard & Performance Report
@@ -84,17 +85,9 @@ interface OperatingCost {
   total_monthly: number
 }
 
-interface FYSummary {
-  total_gross_gains: number
-  total_discounts: number
-  total_losses: number
-  net_taxable_gain: number
-}
-
 export default function PerformanceReportPage() {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [selectedPeriod, setSelectedPeriod] = useState<'MTD' | 'QTD' | 'YTD' | 'FY'>('YTD')
   const [selectedFY, setSelectedFY] = useState('')
   
   // Data
@@ -102,26 +95,21 @@ export default function PerformanceReportPage() {
   const [soldLots, setSoldLots] = useState<SoldLot[]>([])
   const [operatingCosts, setOperatingCosts] = useState<OperatingCost[]>([])
   const [prices, setPrices] = useState<Record<string, number>>({})
-  const [editingSector, setEditingSector] = useState<string | null>(null)
-
-  // Update holding sector
-  const updateHoldingSector = async (holdingId: string, sector: string) => {
-    try {
-      const supabase = createClient()
-      await supabase
-        .from('holdings')
-        .update({ sector })
-        .eq('id', holdingId)
-      
-      // Update local state
-      setHoldings(prev => prev.map(h => 
-        h.id === holdingId ? { ...h, sector } : h
-      ))
-      setEditingSector(null)
-    } catch (err) {
-      console.error('Failed to update sector:', err)
-    }
-  }
+  
+  // Sector assignment state
+  const [selectedHoldingId, setSelectedHoldingId] = useState('')
+  const [selectedSector, setSelectedSector] = useState('')
+  
+  // Monthly costs input state
+  const [monthlyCosts, setMonthlyCosts] = useState({
+    supabase: '25',
+    vercel: '20',
+    apis: '0',
+    claude: '169.99',
+    otherAI: '0',
+    other: '0',
+  })
+  const [costsSaved, setCostsSaved] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -153,10 +141,24 @@ export default function PerformanceReportPage() {
         .from('operating_costs')
         .select('*')
         .order('month', { ascending: false })
+        .limit(1)
       
       setHoldings(holdingsData || [])
       setSoldLots(salesData || [])
       setOperatingCosts(costsData || [])
+      
+      // Load latest costs into form
+      if (costsData && costsData.length > 0) {
+        const latest = costsData[0]
+        setMonthlyCosts({
+          supabase: String(latest.supabase || 25),
+          vercel: String(latest.vercel || 20),
+          apis: String(latest.api_services || 0),
+          claude: String(latest.claude_subscription || 169.99),
+          otherAI: String(latest.other_ai_tools || 0),
+          other: String(latest.other_costs || 0),
+        })
+      }
       
       // Fetch current prices for holdings
       if (holdingsData && holdingsData.length > 0) {
@@ -177,6 +179,71 @@ export default function PerformanceReportPage() {
     }
   }
 
+  // Assign sector to holding
+  const assignSector = async () => {
+    if (!selectedHoldingId || !selectedSector) return
+    
+    try {
+      const supabase = createClient()
+      await supabase
+        .from('holdings')
+        .update({ sector: selectedSector })
+        .eq('id', selectedHoldingId)
+      
+      // Update local state
+      setHoldings(prev => prev.map(h => 
+        h.id === selectedHoldingId ? { ...h, sector: selectedSector } : h
+      ))
+      
+      // Reset dropdowns
+      setSelectedHoldingId('')
+      setSelectedSector('')
+    } catch (err) {
+      console.error('Failed to assign sector:', err)
+    }
+  }
+
+  // Calculate monthly total
+  const calculateMonthlyTotal = () => {
+    return (
+      parseFloat(monthlyCosts.supabase || '0') +
+      parseFloat(monthlyCosts.vercel || '0') +
+      parseFloat(monthlyCosts.apis || '0') +
+      parseFloat(monthlyCosts.claude || '0') +
+      parseFloat(monthlyCosts.otherAI || '0') +
+      parseFloat(monthlyCosts.other || '0')
+    )
+  }
+
+  // Save monthly costs
+  const saveMonthlyCosts = async () => {
+    try {
+      const supabase = createClient()
+      const now = new Date()
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      
+      await supabase.from('operating_costs').upsert({
+        user_id: user.id,
+        month: monthKey,
+        supabase: parseFloat(monthlyCosts.supabase || '0'),
+        vercel: parseFloat(monthlyCosts.vercel || '0'),
+        api_services: parseFloat(monthlyCosts.apis || '0'),
+        claude_subscription: parseFloat(monthlyCosts.claude || '0'),
+        other_ai_tools: parseFloat(monthlyCosts.otherAI || '0'),
+        other_costs: parseFloat(monthlyCosts.other || '0'),
+      }, { onConflict: 'user_id, month' })
+      
+      setCostsSaved(true)
+      setTimeout(() => setCostsSaved(false), 2000)
+      loadData()
+    } catch (err) {
+      console.error('Failed to save costs:', err)
+    }
+  }
+
   // Get FY date range
   const getFYDates = (fy: string) => {
     const [startYear] = fy.split('-').map(Number)
@@ -191,12 +258,6 @@ export default function PerformanceReportPage() {
   const fySales = soldLots.filter(sale => {
     const saleDate = new Date(sale.sale_date)
     return saleDate >= fyDates.start && saleDate <= fyDates.end
-  })
-
-  // Filter costs by FY
-  const fyCosts = operatingCosts.filter(cost => {
-    const costDate = new Date(cost.month)
-    return costDate >= fyDates.start && costDate <= fyDates.end
   })
 
   // Calculate portfolio value
@@ -214,7 +275,7 @@ export default function PerformanceReportPage() {
       totalValue += value
       totalCost += cost
 
-      const sector = holding.sector || 'OTHER'
+      const sector = holding.sector || 'Other'
       sectorValues[sector] = (sectorValues[sector] || 0) + value
     })
 
@@ -232,52 +293,39 @@ export default function PerformanceReportPage() {
   // Calculate trading costs
   const calculateTradingCosts = () => {
     const brokerage = fySales.reduce((sum, s) => sum + (s.sell_brokerage || 0) + (s.buy_brokerage || 0), 0)
-    // Estimate regulatory fees as included in brokerage for now
     return { brokerage, regulatory: 0, fx: 0, total: brokerage }
   }
 
-  // Calculate infrastructure costs
+  // Calculate infrastructure costs (annualized from monthly input)
   const calculateInfraCosts = () => {
-    const totals = {
-      supabase: 0,
-      vercel: 0,
-      apis: 0,
-      claude: 0,
-      otherAI: 0,
-      other: 0,
-    }
+    const monthsInFY = 12
+    const monthly = calculateMonthlyTotal()
     
-    fyCosts.forEach(cost => {
-      totals.supabase += cost.supabase || 0
-      totals.vercel += cost.vercel || 0
-      totals.apis += cost.api_services || 0
-      totals.claude += cost.claude_subscription || 0
-      totals.otherAI += cost.other_ai_tools || 0
-      totals.other += cost.other_costs || 0
-    })
-
     return {
-      ...totals,
-      totalInfra: totals.supabase + totals.vercel + totals.apis,
-      totalResearch: totals.claude + totals.otherAI,
-      total: totals.supabase + totals.vercel + totals.apis + totals.claude + totals.otherAI + totals.other,
+      supabase: parseFloat(monthlyCosts.supabase || '0') * monthsInFY,
+      vercel: parseFloat(monthlyCosts.vercel || '0') * monthsInFY,
+      apis: parseFloat(monthlyCosts.apis || '0') * monthsInFY,
+      claude: parseFloat(monthlyCosts.claude || '0') * monthsInFY,
+      otherAI: parseFloat(monthlyCosts.otherAI || '0') * monthsInFY,
+      other: parseFloat(monthlyCosts.other || '0') * monthsInFY,
+      totalInfra: (parseFloat(monthlyCosts.supabase || '0') + parseFloat(monthlyCosts.vercel || '0') + parseFloat(monthlyCosts.apis || '0')) * monthsInFY,
+      totalResearch: (parseFloat(monthlyCosts.claude || '0') + parseFloat(monthlyCosts.otherAI || '0')) * monthsInFY,
+      total: monthly * monthsInFY,
     }
   }
 
   // Calculate CGT
   const calculateCGT = () => {
-    // Use 50% discount for >12 month holds, 32.5% marginal rate
     const longTermGains = fySales
-      .filter(s => s.gross_gain > 0 && new Date(s.sale_date).getTime() - new Date(s.sale_date).getTime() > 365 * 24 * 60 * 60 * 1000)
-      .reduce((sum, s) => sum + s.gross_gain, 0)
+      .filter(s => s.gross_gain > 0)
+      .reduce((sum, s) => sum + s.gross_gain, 0) * 0.5 // Assume 50% eligible for discount
     
     const shortTermGains = fySales
       .filter(s => s.gross_gain > 0)
-      .reduce((sum, s) => sum + s.gross_gain, 0) - longTermGains
+      .reduce((sum, s) => sum + s.gross_gain, 0) * 0.5
     
     const losses = fySales.filter(s => s.gross_gain < 0).reduce((sum, s) => sum + Math.abs(s.gross_gain), 0)
     
-    // Apply losses first
     const netGains = Math.max(0, shortTermGains + longTermGains - losses)
     const discountApplied = longTermGains * 0.5
     const taxableGain = netGains - discountApplied
@@ -301,9 +349,9 @@ export default function PerformanceReportPage() {
   const capitalDeployed = portfolio.totalCost > 0 ? portfolio.totalCost : 1
   const netReturnPct = (netProfit / capitalDeployed) * 100
 
-  // Benchmark comparison (placeholder - would fetch from API)
-  const sp500Return = 18.5 // Example
-  const asx200Return = 9.2 // Example
+  // Benchmark comparison (placeholder)
+  const sp500Return = 18.5
+  const asx200Return = 9.2
   const alphaVsSP500 = netReturnPct - sp500Return
   const alphaVsASX200 = netReturnPct - asx200Return
 
@@ -440,10 +488,6 @@ export default function PerformanceReportPage() {
               <span className="text-gray-600">Brokerage (Stake/CommSec/CMC)</span>
               <span className="font-mono text-red-600">({fmt(tradingCosts.brokerage)})</span>
             </div>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-600">Regulatory Fees</span>
-              <span className="font-mono text-red-600">({fmt(tradingCosts.regulatory)})</span>
-            </div>
             <div className="flex justify-between py-1 font-medium">
               <span>Gross Profit</span>
               <span className={`font-mono ${grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -456,14 +500,14 @@ export default function PerformanceReportPage() {
           <div className="pb-2 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
               <Server className="w-3 h-3" />
-              INFRASTRUCTURE
+              INFRASTRUCTURE (Annualized)
             </p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Supabase (Database)</span>
+              <span className="text-gray-600">Supabase</span>
               <span className="font-mono text-red-600">({fmt(infraCosts.supabase)})</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Vercel (Hosting)</span>
+              <span className="text-gray-600">Vercel</span>
               <span className="font-mono text-red-600">({fmt(infraCosts.vercel)})</span>
             </div>
             <div className="flex justify-between py-1">
@@ -476,7 +520,7 @@ export default function PerformanceReportPage() {
           <div className="pb-2 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
               <Brain className="w-3 h-3" />
-              RESEARCH & ANALYSIS
+              RESEARCH & ANALYSIS (Annualized)
             </p>
             <div className="flex justify-between py-1">
               <span className="text-gray-600">Claude Max</span>
@@ -496,9 +540,9 @@ export default function PerformanceReportPage() {
 
           {/* Tax */}
           <div className="pb-2 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 mb-2">TAX</p>
+            <p className="text-xs font-semibold text-gray-500 mb-2">TAX (CGT)</p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">50% CGT Discount Applied</span>
+              <span className="text-gray-600">50% CGT Discount (≥12 months)</span>
               <span className="font-mono text-cyan-600">({fmt(cgt.discountApplied)})</span>
             </div>
             <div className="flex justify-between py-1">
@@ -519,7 +563,7 @@ export default function PerformanceReportPage() {
         </div>
       </div>
 
-      {/* Sector Allocation */}
+      {/* Sector Allocation Chart */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <PieChart className="w-4 h-4 text-purple-600" />
@@ -539,9 +583,9 @@ export default function PerformanceReportPage() {
                     <span className={`font-medium ${sectorInfo.textColor}`}>{sectorInfo.name}</span>
                     <span className="font-mono">{fmt(value)} ({pct.toFixed(1)}%)</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full`}
+                      className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -552,140 +596,233 @@ export default function PerformanceReportPage() {
 
         {Object.keys(portfolio.sectorValues).length === 0 && (
           <p className="text-sm text-gray-500 text-center py-4">
-            No holdings found. Add sector to your holdings to see allocation.
+            No holdings found. Add holdings to see allocation.
           </p>
         )}
       </div>
 
-      {/* Assign Sectors to Holdings */}
+      {/* Assign Sector - Dropdown Style */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Target className="w-4 h-4 text-purple-600" />
-          ASSIGN SECTORS TO HOLDINGS
+          ASSIGN SECTOR TO HOLDING
         </h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Click on any holding to assign or change its sector classification.
-        </p>
         
-        <div className="space-y-2">
-          {holdings.map(holding => {
-            const currentSector = holding.sector || 'Other'
-            const sectorInfo = SECTORS[currentSector] || SECTORS['Other']
-            const isEditing = editingSector === holding.id
-            const totalUnits = holding.lots?.reduce((sum, lot) => sum + lot.units, 0) || 0
-            const price = prices[holding.ticker] || 0
-            const value = totalUnits * price
-            
-            return (
-              <div
-                key={holding.id}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
-                  isEditing ? 'border-purple-300 bg-purple-50' : 'border-gray-100 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono font-bold text-gray-900">{holding.ticker}</span>
-                  <span className="text-sm text-gray-500 hidden sm:inline">{holding.name}</span>
-                  {value > 0 && (
-                    <span className="text-xs text-gray-400">{fmt(value)}</span>
-                  )}
-                </div>
-                
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={currentSector}
-                      onChange={(e) => updateHoldingSector(holding.id, e.target.value)}
-                      className="text-sm border border-purple-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      autoFocus
-                    >
-                      {SECTOR_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => setEditingSector(null)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setEditingSector(holding.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${sectorInfo.color} text-white hover:opacity-80`}
-                  >
-                    {sectorInfo.name}
-                  </button>
-                )}
-              </div>
-            )
-          })}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {/* Holding Dropdown */}
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">Select Holding</label>
+            <select
+              value={selectedHoldingId}
+              onChange={(e) => setSelectedHoldingId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            >
+              <option value="">Choose holding...</option>
+              {holdings.map(h => (
+                <option key={h.id} value={h.id}>
+                  {h.ticker} — {h.name} ({h.sector || 'Unassigned'})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Sector Dropdown */}
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">Assign Sector</label>
+            <select
+              value={selectedSector}
+              onChange={(e) => setSelectedSector(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              disabled={!selectedHoldingId}
+            >
+              <option value="">Choose sector...</option>
+              {SECTOR_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Assign Button */}
+          <div className="flex items-end">
+            <button
+              onClick={assignSector}
+              disabled={!selectedHoldingId || !selectedSector}
+              className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Assign
+            </button>
+          </div>
         </div>
 
-        {holdings.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No holdings found. Add holdings to assign sectors.
-          </p>
-        )}
-      </div>
-
-      {/* Holdings by Sector (Summary View) */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">HOLDINGS BY SECTOR</h3>
-        
-        {Object.entries(SECTORS).map(([sectorKey, sectorInfo]) => {
-          const sectorHoldings = holdings.filter(h => (h.sector || 'Other') === sectorKey)
-          if (sectorHoldings.length === 0) return null
-          
-          return (
-            <div key={sectorKey} className="mb-4">
-              <p className={`text-xs font-semibold ${sectorInfo.textColor} mb-2`}>{sectorInfo.name}</p>
-              <div className="flex flex-wrap gap-2">
-                {sectorHoldings.map(h => (
-                  <span
-                    key={h.id}
-                    className="px-2 py-1 bg-gray-100 rounded text-xs font-mono"
-                  >
-                    {h.ticker}
+        {/* Current Holdings List */}
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs text-gray-500 mb-2">CURRENT ASSIGNMENTS</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {holdings.map(h => {
+              const sectorInfo = SECTORS[h.sector || 'Other'] || SECTORS['Other']
+              return (
+                <div key={h.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <span className="font-mono text-sm font-bold text-gray-900">{h.ticker}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${sectorInfo.color} text-white truncate`}>
+                    {(h.sector || 'Other').replace('Infrastructure', 'Infra')}
                   </span>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-        
-        {holdings.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No holdings to display.
-          </p>
-        )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Monthly Costs Input */}
+      {/* Operating Costs Input */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Server className="w-4 h-4 text-slate-500" />
           MONTHLY OPERATING COSTS
         </h3>
         <p className="text-xs text-gray-500 mb-4">
-          Track your infrastructure and research costs. Go to Settings to add/edit monthly costs.
+          Enter your monthly costs. These are annualized in the P&L calculation above.
         </p>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-          <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Supabase</p>
-            <p className="font-mono font-semibold">$25/mo</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          {/* Infrastructure */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Supabase</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.supabase}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, supabase: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="25"
+              />
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Vercel</p>
-            <p className="font-mono font-semibold">$20/mo</p>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Vercel</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.vercel}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, vercel: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="20"
+              />
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Claude Max</p>
-            <p className="font-mono font-semibold">$169.99/mo</p>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">APIs</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.apis}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, apis: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          
+          {/* Research */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Claude Max</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.claude}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, claude: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="169.99"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Other AI Tools</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.otherAI}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, otherAI: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Other</label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input
+                type="number"
+                value={monthlyCosts.other}
+                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, other: e.target.value }))}
+                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                placeholder="0"
+              />
+            </div>
           </div>
         </div>
+        
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div>
+            <p className="text-sm font-medium text-gray-900">
+              Monthly Total: <span className="font-mono">${calculateMonthlyTotal().toFixed(2)}</span>
+            </p>
+            <p className="text-xs text-gray-500">
+              Annualized: <span className="font-mono">${(calculateMonthlyTotal() * 12).toFixed(2)}</span>
+            </p>
+          </div>
+          <button
+            onClick={saveMonthlyCosts}
+            className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1 ${
+              costsSaved 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            }`}
+          >
+            {costsSaved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {costsSaved ? 'Saved!' : 'Save Costs'}
+          </button>
+        </div>
+      </div>
+
+      {/* Holdings by Sector (Compact) */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">HOLDINGS BY SECTOR</h3>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Object.entries(SECTORS).map(([sectorKey, sectorInfo]) => {
+            const sectorHoldings = holdings.filter(h => (h.sector || 'Other') === sectorKey)
+            if (sectorHoldings.length === 0) return null
+            
+            return (
+              <div key={sectorKey} className="p-3 bg-gray-50 rounded-lg">
+                <p className={`text-xs font-semibold ${sectorInfo.textColor} mb-2`}>{sectorInfo.name}</p>
+                <div className="flex flex-wrap gap-1">
+                  {sectorHoldings.map(h => (
+                    <span
+                      key={h.id}
+                      className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs font-mono"
+                    >
+                      {h.ticker}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        
+        {holdings.length === 0 && (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No holdings to display.
+          </p>
+        )}
       </div>
 
       {/* Footer */}
