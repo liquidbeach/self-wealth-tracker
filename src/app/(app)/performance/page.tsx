@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import Link from 'next/link'
 import {
   TrendingUp,
   TrendingDown,
@@ -13,14 +14,13 @@ import {
   Briefcase,
   Server,
   Brain,
-  ChevronDown,
   RefreshCw,
   Download,
   CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
-  Save,
+  Settings,
+  ExternalLink,
 } from 'lucide-react'
 
 // Sector definitions - consistent across Dashboard & Performance Report
@@ -60,11 +60,14 @@ interface Holding {
   lots: {
     units: number
     purchase_price: number
+    purchase_date: string
   }[]
 }
 
 interface SoldLot {
+  id: string
   ticker: string
+  units: number
   proceeds: number
   cost_base: number
   gross_gain: number
@@ -72,6 +75,7 @@ interface SoldLot {
   sell_brokerage: number
   buy_brokerage: number
   sale_date: string
+  purchase_date?: string
 }
 
 interface OperatingCost {
@@ -90,26 +94,16 @@ export default function PerformanceReportPage() {
   const [loading, setLoading] = useState(true)
   const [selectedFY, setSelectedFY] = useState('')
   
-  // Data
+  // Data from database
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [soldLots, setSoldLots] = useState<SoldLot[]>([])
   const [operatingCosts, setOperatingCosts] = useState<OperatingCost[]>([])
   const [prices, setPrices] = useState<Record<string, number>>({})
+  const [exchangeRates, setExchangeRates] = useState<{ USD_AUD: number; INR_AUD: number }>({ USD_AUD: 1.55, INR_AUD: 0.019 })
   
   // Sector assignment state
   const [selectedHoldingId, setSelectedHoldingId] = useState('')
   const [selectedSector, setSelectedSector] = useState('')
-  
-  // Monthly costs input state
-  const [monthlyCosts, setMonthlyCosts] = useState({
-    supabase: '25',
-    vercel: '20',
-    apis: '0',
-    claude: '169.99',
-    otherAI: '0',
-    other: '0',
-  })
-  const [costsSaved, setCostsSaved] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -128,36 +122,33 @@ export default function PerformanceReportPage() {
       // Load holdings with lots
       const { data: holdingsData } = await supabase
         .from('holdings')
-        .select('id, ticker, name, currency, sector, lots(units, purchase_price)')
+        .select('id, ticker, name, currency, sector, lots(units, purchase_price, purchase_date)')
       
-      // Load sold lots for current FY
+      // Load sold lots
       const { data: salesData } = await supabase
         .from('cgt_sales')
         .select('*')
         .order('sale_date', { ascending: false })
       
-      // Load operating costs
+      // Load ALL operating costs for FY calculation
       const { data: costsData } = await supabase
         .from('operating_costs')
         .select('*')
         .order('month', { ascending: false })
-        .limit(1)
       
       setHoldings(holdingsData || [])
       setSoldLots(salesData || [])
       setOperatingCosts(costsData || [])
       
-      // Load latest costs into form
-      if (costsData && costsData.length > 0) {
-        const latest = costsData[0]
-        setMonthlyCosts({
-          supabase: String(latest.supabase || 25),
-          vercel: String(latest.vercel || 20),
-          apis: String(latest.api_services || 0),
-          claude: String(latest.claude_subscription || 169.99),
-          otherAI: String(latest.other_ai_tools || 0),
-          other: String(latest.other_costs || 0),
-        })
+      // Fetch exchange rates
+      try {
+        const fxRes = await fetch('/api/exchange-rates')
+        if (fxRes.ok) {
+          const fxData = await fxRes.json()
+          setExchangeRates(fxData)
+        }
+      } catch (err) {
+        console.error('Failed to fetch exchange rates:', err)
       }
       
       // Fetch current prices for holdings (same method as Dashboard)
@@ -201,57 +192,14 @@ export default function PerformanceReportPage() {
         .update({ sector: selectedSector })
         .eq('id', selectedHoldingId)
       
-      // Update local state
       setHoldings(prev => prev.map(h => 
         h.id === selectedHoldingId ? { ...h, sector: selectedSector } : h
       ))
       
-      // Reset dropdowns
       setSelectedHoldingId('')
       setSelectedSector('')
     } catch (err) {
       console.error('Failed to assign sector:', err)
-    }
-  }
-
-  // Calculate monthly total
-  const calculateMonthlyTotal = () => {
-    return (
-      parseFloat(monthlyCosts.supabase || '0') +
-      parseFloat(monthlyCosts.vercel || '0') +
-      parseFloat(monthlyCosts.apis || '0') +
-      parseFloat(monthlyCosts.claude || '0') +
-      parseFloat(monthlyCosts.otherAI || '0') +
-      parseFloat(monthlyCosts.other || '0')
-    )
-  }
-
-  // Save monthly costs
-  const saveMonthlyCosts = async () => {
-    try {
-      const supabase = createClient()
-      const now = new Date()
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      
-      await supabase.from('operating_costs').upsert({
-        user_id: user.id,
-        month: monthKey,
-        supabase: parseFloat(monthlyCosts.supabase || '0'),
-        vercel: parseFloat(monthlyCosts.vercel || '0'),
-        api_services: parseFloat(monthlyCosts.apis || '0'),
-        claude_subscription: parseFloat(monthlyCosts.claude || '0'),
-        other_ai_tools: parseFloat(monthlyCosts.otherAI || '0'),
-        other_costs: parseFloat(monthlyCosts.other || '0'),
-      }, { onConflict: 'user_id, month' })
-      
-      setCostsSaved(true)
-      setTimeout(() => setCostsSaved(false), 2000)
-      loadData()
-    } catch (err) {
-      console.error('Failed to save costs:', err)
     }
   }
 
@@ -271,7 +219,13 @@ export default function PerformanceReportPage() {
     return saleDate >= fyDates.start && saleDate <= fyDates.end
   })
 
-  // Calculate portfolio value
+  // Filter costs by FY
+  const fyCosts = operatingCosts.filter(cost => {
+    const costDate = new Date(cost.month)
+    return costDate >= fyDates.start && costDate <= fyDates.end
+  })
+
+  // Calculate portfolio value with AUD conversion
   const calculatePortfolioValue = () => {
     let totalValue = 0
     let totalCost = 0
@@ -281,7 +235,12 @@ export default function PerformanceReportPage() {
       const price = prices[holding.ticker] || 0
       const totalUnits = holding.lots?.reduce((sum, lot) => sum + lot.units, 0) || 0
       const cost = holding.lots?.reduce((sum, lot) => sum + (lot.units * lot.purchase_price), 0) || 0
-      const value = totalUnits * price
+      let value = totalUnits * price
+
+      // Convert USD to AUD
+      if (holding.currency === 'USD') {
+        value = value * exchangeRates.USD_AUD
+      }
 
       totalValue += value
       totalCost += cost
@@ -293,7 +252,7 @@ export default function PerformanceReportPage() {
     return { totalValue, totalCost, sectorValues, unrealisedGain: totalValue - totalCost }
   }
 
-  // Calculate trading revenue
+  // Calculate trading revenue from sales
   const calculateTradingRevenue = () => {
     const grossGains = fySales.filter(s => s.gross_gain > 0).reduce((sum, s) => sum + s.gross_gain, 0)
     const grossLosses = fySales.filter(s => s.gross_gain < 0).reduce((sum, s) => sum + Math.abs(s.gross_gain), 0)
@@ -301,66 +260,104 @@ export default function PerformanceReportPage() {
     return { grossGains, grossLosses, netGains }
   }
 
-  // Calculate trading costs
+  // Calculate trading costs from sales
   const calculateTradingCosts = () => {
     const brokerage = fySales.reduce((sum, s) => sum + (s.sell_brokerage || 0) + (s.buy_brokerage || 0), 0)
     return { brokerage, regulatory: 0, fx: 0, total: brokerage }
   }
 
-  // Calculate infrastructure costs (annualized from monthly input)
-  const calculateInfraCosts = () => {
-    const monthsInFY = 12
-    const monthly = calculateMonthlyTotal()
+  // Calculate operating costs from database (annualized)
+  const calculateOperatingCosts = () => {
+    // Sum all FY costs
+    const fyTotal = fyCosts.reduce((sum, c) => sum + (c.total_monthly || 0), 0)
+    const monthsRecorded = fyCosts.length
     
+    // If we have recorded months, use average * 12 for annualized
+    // Otherwise use default estimates
+    let annualized = 0
+    let infraTotal = 0
+    let researchTotal = 0
+    
+    if (monthsRecorded > 0) {
+      const avgMonthly = fyTotal / monthsRecorded
+      annualized = avgMonthly * 12
+      
+      // Sum up category totals
+      infraTotal = fyCosts.reduce((sum, c) => sum + (c.supabase || 0) + (c.vercel || 0) + (c.api_services || 0), 0)
+      researchTotal = fyCosts.reduce((sum, c) => sum + (c.claude_subscription || 0) + (c.other_ai_tools || 0) + (c.other_costs || 0), 0)
+      
+      // Annualize
+      infraTotal = (infraTotal / monthsRecorded) * 12
+      researchTotal = (researchTotal / monthsRecorded) * 12
+    } else {
+      // Default estimates if no costs recorded
+      infraTotal = (25 + 20) * 12 // Supabase + Vercel
+      researchTotal = 169.99 * 12 // Claude
+      annualized = infraTotal + researchTotal
+    }
+
     return {
-      supabase: parseFloat(monthlyCosts.supabase || '0') * monthsInFY,
-      vercel: parseFloat(monthlyCosts.vercel || '0') * monthsInFY,
-      apis: parseFloat(monthlyCosts.apis || '0') * monthsInFY,
-      claude: parseFloat(monthlyCosts.claude || '0') * monthsInFY,
-      otherAI: parseFloat(monthlyCosts.otherAI || '0') * monthsInFY,
-      other: parseFloat(monthlyCosts.other || '0') * monthsInFY,
-      totalInfra: (parseFloat(monthlyCosts.supabase || '0') + parseFloat(monthlyCosts.vercel || '0') + parseFloat(monthlyCosts.apis || '0')) * monthsInFY,
-      totalResearch: (parseFloat(monthlyCosts.claude || '0') + parseFloat(monthlyCosts.otherAI || '0')) * monthsInFY,
-      total: monthly * monthsInFY,
+      infraTotal,
+      researchTotal,
+      total: annualized,
+      monthsRecorded,
     }
   }
 
-  // Calculate CGT
+  // Calculate CGT with proper long-term/short-term split
   const calculateCGT = () => {
-    const longTermGains = fySales
-      .filter(s => s.gross_gain > 0)
-      .reduce((sum, s) => sum + s.gross_gain, 0) * 0.5 // Assume 50% eligible for discount
+    let longTermGains = 0
+    let shortTermGains = 0
+    let losses = 0
+
+    fySales.forEach(sale => {
+      if (sale.gross_gain > 0) {
+        // Check if held > 12 months (eligible for 50% discount)
+        // This would require purchase_date on cgt_sales - for now assume 50/50 split
+        longTermGains += sale.gross_gain * 0.5
+        shortTermGains += sale.gross_gain * 0.5
+      } else {
+        losses += Math.abs(sale.gross_gain)
+      }
+    })
+
+    // Apply losses first
+    const netShortTerm = Math.max(0, shortTermGains - losses)
+    const remainingLosses = Math.max(0, losses - shortTermGains)
+    const netLongTerm = Math.max(0, longTermGains - remainingLosses)
     
-    const shortTermGains = fySales
-      .filter(s => s.gross_gain > 0)
-      .reduce((sum, s) => sum + s.gross_gain, 0) * 0.5
-    
-    const losses = fySales.filter(s => s.gross_gain < 0).reduce((sum, s) => sum + Math.abs(s.gross_gain), 0)
-    
-    const netGains = Math.max(0, shortTermGains + longTermGains - losses)
-    const discountApplied = longTermGains * 0.5
-    const taxableGain = netGains - discountApplied
-    const cgtPayable = taxableGain * 0.325
-    
-    return { discountApplied, taxableGain, cgtPayable }
+    // 50% discount on long-term gains
+    const discountApplied = netLongTerm * 0.5
+    const taxableGain = netShortTerm + (netLongTerm - discountApplied)
+    const cgtPayable = taxableGain * 0.325 // 32.5% marginal rate
+
+    return { 
+      longTermGains, 
+      shortTermGains, 
+      losses, 
+      discountApplied, 
+      taxableGain, 
+      cgtPayable 
+    }
   }
 
   const portfolio = calculatePortfolioValue()
   const trading = calculateTradingRevenue()
   const tradingCosts = calculateTradingCosts()
-  const infraCosts = calculateInfraCosts()
+  const opCosts = calculateOperatingCosts()
   const cgt = calculateCGT()
 
   // P&L Summary
   const grossProfit = trading.netGains - tradingCosts.total
-  const operatingProfit = grossProfit - infraCosts.total
+  const operatingProfit = grossProfit - opCosts.total
   const netProfit = operatingProfit - cgt.cgtPayable
 
   // Returns
   const capitalDeployed = portfolio.totalCost > 0 ? portfolio.totalCost : 1
   const netReturnPct = (netProfit / capitalDeployed) * 100
+  const costRatio = (opCosts.total / (portfolio.totalValue > 0 ? portfolio.totalValue : 1)) * 100
 
-  // Benchmark comparison (placeholder)
+  // Benchmark comparison (placeholder - would need real API)
   const sp500Return = 18.5
   const asx200Return = 9.2
   const alphaVsSP500 = netReturnPct - sp500Return
@@ -397,8 +394,11 @@ export default function PerformanceReportPage() {
             <option value="2025-2026">FY 2025-26</option>
             <option value="2024-2025">FY 2024-25</option>
           </select>
-          <button className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200">
-            <Download className="w-4 h-4 text-slate-600" />
+          <button 
+            onClick={loadData}
+            className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -417,7 +417,7 @@ export default function PerformanceReportPage() {
           <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {netProfit >= 0 ? '' : '-'}{fmt(netProfit)}
           </p>
-          <p className="text-xs text-gray-500">After tax</p>
+          <p className="text-xs text-gray-500">After tax & costs</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Net Return</p>
@@ -429,7 +429,7 @@ export default function PerformanceReportPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Cost Ratio</p>
           <p className="text-xl font-bold text-gray-900">
-            {((infraCosts.total / capitalDeployed) * 100).toFixed(2)}%
+            {costRatio.toFixed(2)}%
           </p>
           <p className="text-xs text-gray-500">Of AUM</p>
         </div>
@@ -463,6 +463,9 @@ export default function PerformanceReportPage() {
             </p>
           </div>
         </div>
+        <p className="text-xs text-slate-500 mt-3 text-center">
+          * Benchmark returns are placeholder values
+        </p>
       </div>
 
       {/* P&L Waterfall */}
@@ -496,7 +499,7 @@ export default function PerformanceReportPage() {
           <div className="pb-2 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-2">TRADING COSTS</p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Brokerage (Stake/CommSec/CMC)</span>
+              <span className="text-gray-600">Brokerage</span>
               <span className="font-mono text-red-600">({fmt(tradingCosts.brokerage)})</span>
             </div>
             <div className="flex justify-between py-1 font-medium">
@@ -507,41 +510,34 @@ export default function PerformanceReportPage() {
             </div>
           </div>
 
-          {/* Infrastructure Costs */}
+          {/* Operating Costs */}
           <div className="pb-2 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
-              <Server className="w-3 h-3" />
-              INFRASTRUCTURE (Annualized)
-            </p>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-600">Supabase</span>
-              <span className="font-mono text-red-600">({fmt(infraCosts.supabase)})</span>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                <Server className="w-3 h-3" />
+                OPERATING COSTS (Annualized)
+              </p>
+              <Link 
+                href="/settings/costs" 
+                className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+              >
+                Edit <ExternalLink className="w-3 h-3" />
+              </Link>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Vercel</span>
-              <span className="font-mono text-red-600">({fmt(infraCosts.vercel)})</span>
+              <span className="text-gray-600">Infrastructure (Supabase, Vercel, APIs)</span>
+              <span className="font-mono text-red-600">({fmt(opCosts.infraTotal)})</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">API Services</span>
-              <span className="font-mono text-red-600">({fmt(infraCosts.apis)})</span>
+              <span className="text-gray-600">Research & Analysis (Claude, AI Tools)</span>
+              <span className="font-mono text-red-600">({fmt(opCosts.researchTotal)})</span>
             </div>
-          </div>
-
-          {/* Research Costs */}
-          <div className="pb-2 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
-              <Brain className="w-3 h-3" />
-              RESEARCH & ANALYSIS (Annualized)
-            </p>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-600">Claude Max</span>
-              <span className="font-mono text-red-600">({fmt(infraCosts.claude)})</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-gray-600">Other AI Tools</span>
-              <span className="font-mono text-red-600">({fmt(infraCosts.otherAI)})</span>
-            </div>
-            <div className="flex justify-between py-1 font-medium">
+            {opCosts.monthsRecorded > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                Based on {opCosts.monthsRecorded} month{opCosts.monthsRecorded > 1 ? 's' : ''} of recorded costs
+              </p>
+            )}
+            <div className="flex justify-between py-1 font-medium mt-2">
               <span>Operating Profit (EBIT)</span>
               <span className={`font-mono ${operatingProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {fmt(operatingProfit)}
@@ -553,7 +549,7 @@ export default function PerformanceReportPage() {
           <div className="pb-2 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-2">TAX (CGT)</p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">50% CGT Discount (≥12 months)</span>
+              <span className="text-gray-600">50% CGT Discount (holdings ≥12 months)</span>
               <span className="font-mono text-cyan-600">({fmt(cgt.discountApplied)})</span>
             </div>
             <div className="flex justify-between py-1">
@@ -574,7 +570,7 @@ export default function PerformanceReportPage() {
         </div>
       </div>
 
-      {/* Assign Sector - Dropdown Style */}
+      {/* Assign Sector */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Target className="w-4 h-4 text-purple-600" />
@@ -582,7 +578,6 @@ export default function PerformanceReportPage() {
         </h3>
         
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          {/* Holding Dropdown */}
           <div className="flex-1">
             <label className="block text-xs text-gray-500 mb-1">Select Holding</label>
             <select
@@ -599,7 +594,6 @@ export default function PerformanceReportPage() {
             </select>
           </div>
           
-          {/* Sector Dropdown */}
           <div className="flex-1">
             <label className="block text-xs text-gray-500 mb-1">Assign Sector</label>
             <select
@@ -615,7 +609,6 @@ export default function PerformanceReportPage() {
             </select>
           </div>
           
-          {/* Assign Button */}
           <div className="flex items-end">
             <button
               onClick={assignSector}
@@ -683,123 +676,6 @@ export default function PerformanceReportPage() {
             No holdings found. Add holdings to see allocation.
           </p>
         )}
-      </div>
-
-      {/* Operating Costs Input */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Server className="w-4 h-4 text-slate-500" />
-          MONTHLY OPERATING COSTS
-        </h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Enter your monthly costs below. Saving updates the P&L Waterfall above (annualized × 12).
-        </p>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-          {/* Infrastructure */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Supabase</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.supabase}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, supabase: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="25"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Vercel</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.vercel}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, vercel: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="20"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">APIs</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.apis}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, apis: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="0"
-              />
-            </div>
-          </div>
-          
-          {/* Research */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Claude Max</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.claude}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, claude: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="169.99"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Other AI Tools</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.otherAI}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, otherAI: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Other</label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                value={monthlyCosts.other}
-                onChange={(e) => setMonthlyCosts(prev => ({ ...prev, other: e.target.value }))}
-                className="w-full pl-6 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-                placeholder="0"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <div>
-            <p className="text-sm font-medium text-gray-900">
-              Monthly Total: <span className="font-mono">${calculateMonthlyTotal().toFixed(2)}</span>
-            </p>
-            <p className="text-xs text-gray-500">
-              Annualized: <span className="font-mono">${(calculateMonthlyTotal() * 12).toFixed(2)}</span>
-            </p>
-          </div>
-          <button
-            onClick={saveMonthlyCosts}
-            className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1 ${
-              costsSaved 
-                ? 'bg-emerald-100 text-emerald-700' 
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
-          >
-            {costsSaved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {costsSaved ? 'Saved!' : 'Save Costs'}
-          </button>
-        </div>
       </div>
 
       {/* Footer */}

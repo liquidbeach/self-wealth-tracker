@@ -25,6 +25,7 @@ import {
 import { useState, useEffect } from 'react'
 import { Globe } from 'lucide-react'
 import { Target } from 'lucide-react'
+import { Activity} from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -35,6 +36,7 @@ const navigation = [
   { name: 'Journal', href: '/journal', icon: BookOpen },
   { name: 'Trade Simulator', href: '/trade-simulator', icon: Target },
   { name: 'CGT Tracker', href: '/cgt', icon: Calculator },
+  { name: 'Activity', href: '/activity', icon: Activity },
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'AI Universe', href: '/universe', icon: Globe },
   { name: 'Health', href: '/health', icon: Heart },
@@ -42,6 +44,7 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
   { name: 'Performance', href: '/performance', icon: Briefcase },
+  { name: 'Settings', href: '/settings/costs', icon: Settings },
 ]
 
 export default function Sidebar() {
