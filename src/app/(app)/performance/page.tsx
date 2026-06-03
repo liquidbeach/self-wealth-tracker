@@ -160,16 +160,27 @@ export default function PerformanceReportPage() {
         })
       }
       
-      // Fetch current prices for holdings
+      // Fetch current prices for holdings (same method as Dashboard)
       if (holdingsData && holdingsData.length > 0) {
-        const tickers = holdingsData.map(h => h.ticker).join(',')
-        try {
-          const priceRes = await fetch(`/api/stock-prices?symbols=${tickers}`)
-          const priceData = await priceRes.json()
-          setPrices(priceData)
-        } catch (err) {
-          console.error('Failed to fetch prices:', err)
-        }
+        const priceMap: Record<string, number> = {}
+        
+        await Promise.all(
+          holdingsData.map(async (h: any) => {
+            try {
+              const res = await fetch(`/api/quote?symbol=${encodeURIComponent(h.ticker)}`)
+              if (res.ok) {
+                const data = await res.json()
+                if (data.price) {
+                  priceMap[h.ticker] = data.price
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch price for ${h.ticker}:`, err)
+            }
+          })
+        )
+        
+        setPrices(priceMap)
       }
       
       setLoading(false)
@@ -563,44 +574,6 @@ export default function PerformanceReportPage() {
         </div>
       </div>
 
-      {/* Sector Allocation Chart */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-purple-600" />
-          SECTOR ALLOCATION
-        </h3>
-        
-        <div className="space-y-3">
-          {Object.entries(portfolio.sectorValues)
-            .sort((a, b) => b[1] - a[1])
-            .map(([sector, value]) => {
-              const pct = portfolio.totalValue > 0 ? (value / portfolio.totalValue) * 100 : 0
-              const sectorInfo = SECTORS[sector] || SECTORS['Other']
-              
-              return (
-                <div key={sector}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className={`font-medium ${sectorInfo.textColor}`}>{sectorInfo.name}</span>
-                    <span className="font-mono">{fmt(value)} ({pct.toFixed(1)}%)</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-        </div>
-
-        {Object.keys(portfolio.sectorValues).length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No holdings found. Add holdings to see allocation.
-          </p>
-        )}
-      </div>
-
       {/* Assign Sector - Dropdown Style */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -674,6 +647,44 @@ export default function PerformanceReportPage() {
         </div>
       </div>
 
+      {/* Sector Allocation Chart */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-purple-600" />
+          SECTOR ALLOCATION
+        </h3>
+        
+        <div className="space-y-3">
+          {Object.entries(portfolio.sectorValues)
+            .sort((a, b) => b[1] - a[1])
+            .map(([sector, value]) => {
+              const pct = portfolio.totalValue > 0 ? (value / portfolio.totalValue) * 100 : 0
+              const sectorInfo = SECTORS[sector] || SECTORS['Other']
+              
+              return (
+                <div key={sector}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className={`font-medium ${sectorInfo.textColor}`}>{sectorInfo.name}</span>
+                    <span className="font-mono">{fmt(value)} ({pct.toFixed(1)}%)</span>
+                  </div>
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+
+        {Object.keys(portfolio.sectorValues).length === 0 && (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No holdings found. Add holdings to see allocation.
+          </p>
+        )}
+      </div>
+
       {/* Operating Costs Input */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -681,7 +692,7 @@ export default function PerformanceReportPage() {
           MONTHLY OPERATING COSTS
         </h3>
         <p className="text-xs text-gray-500 mb-4">
-          Enter your monthly costs. These are annualized in the P&L calculation above.
+          Enter your monthly costs below. Saving updates the P&L Waterfall above (annualized × 12).
         </p>
         
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
@@ -789,40 +800,6 @@ export default function PerformanceReportPage() {
             {costsSaved ? 'Saved!' : 'Save Costs'}
           </button>
         </div>
-      </div>
-
-      {/* Holdings by Sector (Compact) */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">HOLDINGS BY SECTOR</h3>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.entries(SECTORS).map(([sectorKey, sectorInfo]) => {
-            const sectorHoldings = holdings.filter(h => (h.sector || 'Other') === sectorKey)
-            if (sectorHoldings.length === 0) return null
-            
-            return (
-              <div key={sectorKey} className="p-3 bg-gray-50 rounded-lg">
-                <p className={`text-xs font-semibold ${sectorInfo.textColor} mb-2`}>{sectorInfo.name}</p>
-                <div className="flex flex-wrap gap-1">
-                  {sectorHoldings.map(h => (
-                    <span
-                      key={h.id}
-                      className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs font-mono"
-                    >
-                      {h.ticker}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        
-        {holdings.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No holdings to display.
-          </p>
-        )}
       </div>
 
       {/* Footer */}
