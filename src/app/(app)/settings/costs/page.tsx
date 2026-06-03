@@ -135,17 +135,44 @@ export default function OperatingCostsPage() {
         costs.other_ai_tools + 
         costs.other_costs
 
-      await supabase.from('operating_costs').upsert({
-        user_id: user.id,
-        month: selectedMonth,
-        supabase: costs.supabase,
-        vercel: costs.vercel,
-        api_services: costs.api_services,
-        claude_subscription: costs.claude_subscription,
-        other_ai_tools: costs.other_ai_tools,
-        other_costs: costs.other_costs,
-        total_monthly: total,
-      }, { onConflict: 'user_id, month' })
+      // Check if record exists for this month
+      const { data: existing } = await supabase
+        .from('operating_costs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('month', selectedMonth)
+        .single()
+
+      if (existing) {
+        // Update existing record
+        await supabase
+          .from('operating_costs')
+          .update({
+            supabase: costs.supabase,
+            vercel: costs.vercel,
+            api_services: costs.api_services,
+            claude_subscription: costs.claude_subscription,
+            other_ai_tools: costs.other_ai_tools,
+            other_costs: costs.other_costs,
+            total_monthly: total,
+          })
+          .eq('id', existing.id)
+      } else {
+        // Insert new record
+        await supabase
+          .from('operating_costs')
+          .insert({
+            user_id: user.id,
+            month: selectedMonth,
+            supabase: costs.supabase,
+            vercel: costs.vercel,
+            api_services: costs.api_services,
+            claude_subscription: costs.claude_subscription,
+            other_ai_tools: costs.other_ai_tools,
+            other_costs: costs.other_costs,
+            total_monthly: total,
+          })
+      }
       
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)

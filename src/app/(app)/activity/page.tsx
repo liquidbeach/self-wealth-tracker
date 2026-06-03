@@ -74,20 +74,11 @@ export default function ActivityPage() {
     try {
       const supabase = createClient()
       
-      // Load holdings first (for ticker/name lookup)
+      // Load holdings with lots nested (same pattern as CGT Tracker)
       const { data: holdingsData } = await supabase
         .from('holdings')
-        .select('id, ticker, name')
-      
-      const holdingsMap = new Map<string, { ticker: string; name: string }>(
-        (holdingsData || []).map((h: { id: string; ticker: string; name: string }) => [h.id, { ticker: h.ticker, name: h.name }])
-      )
-      
-      // Load BUYs from lots
-      const { data: lotsData } = await supabase
-        .from('lots')
-        .select('id, holding_id, units, purchase_price, purchase_date, brokerage')
-        .order('purchase_date', { ascending: false })
+        .select('id, ticker, name, lots(id, units, purchase_price, purchase_date, brokerage)')
+        .order('ticker', { ascending: true })
       
       // Load SELLs from cgt_sales
       const { data: salesData } = await supabase
@@ -95,19 +86,23 @@ export default function ActivityPage() {
         .select('*')
         .order('sale_date', { ascending: false })
       
-      // Transform BUYs (join with holdings map)
-      const buys: Transaction[] = (lotsData || []).map((lot: { id: string; holding_id: string; units: number; purchase_price: number; purchase_date: string; brokerage: number | null }) => {
-        const holding = holdingsMap.get(lot.holding_id) || { ticker: 'Unknown', name: 'Unknown' }
-        return {
-          id: `buy-${lot.id}`,
-          type: 'BUY' as const,
-          ticker: holding.ticker,
-          name: holding.name,
-          date: lot.purchase_date,
-          units: lot.units,
-          price: lot.purchase_price,
-          total: lot.units * lot.purchase_price,
-          brokerage: lot.brokerage || 0,
+      // Transform BUYs - flatten holdings → lots
+      const buys: Transaction[] = []
+      ;(holdingsData || []).forEach((holding: { id: string; ticker: string; name: string; lots: Array<{ id: string; units: number; purchase_price: number; purchase_date: string; brokerage: number | null }> | null }) => {
+        if (holding.lots && holding.lots.length > 0) {
+          holding.lots.forEach(lot => {
+            buys.push({
+              id: `buy-${lot.id}`,
+              type: 'BUY' as const,
+              ticker: holding.ticker,
+              name: holding.name,
+              date: lot.purchase_date,
+              units: lot.units,
+              price: lot.purchase_price,
+              total: lot.units * lot.purchase_price,
+              brokerage: lot.brokerage || 0,
+            })
+          })
         }
       })
       
