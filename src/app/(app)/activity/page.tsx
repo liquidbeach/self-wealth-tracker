@@ -32,6 +32,7 @@ interface Transaction {
   brokerage?: number
   gain?: number // Only for SELL
   costBase?: number // Only for SELL
+  wasSold?: boolean // For BUYs that have been sold
 }
 
 export default function ActivityPage() {
@@ -87,7 +88,7 @@ export default function ActivityPage() {
     try {
       const supabase = createClient()
       
-      // Load BUYs from lots with holdings relationship via foreign key
+      // Load REMAINING lots with holdings relationship
       const { data: lotsData, error: lotsError } = await supabase
         .from('lots')
         .select('id, holding_id, units, purchase_price, purchase_date, holdings(ticker, name)')
@@ -97,7 +98,7 @@ export default function ActivityPage() {
         console.error('Lots fetch error:', lotsError)
       }
       
-      // Load SELLs from cgt_sales
+      // Load SELLs from cgt_sales (also contains original purchase info for SOLD lots)
       const { data: salesData, error: salesError } = await supabase
         .from('cgt_sales')
         .select('*')
@@ -110,8 +111,8 @@ export default function ActivityPage() {
       console.log('Lots data:', lotsData)
       console.log('Sales data:', salesData)
       
-      // Transform BUYs
-      const buys: Transaction[] = (lotsData || []).map((lot: any) => ({
+      // Transform REMAINING lots as BUYs
+      const remainingBuys: Transaction[] = (lotsData || []).map((lot: any) => ({
         id: `buy-${lot.id}`,
         type: 'BUY' as const,
         ticker: lot.holdings?.ticker || 'Unknown',
@@ -122,6 +123,24 @@ export default function ActivityPage() {
         total: lot.units * lot.purchase_price,
         brokerage: 0,
       }))
+      
+      // Reconstruct SOLD lots as BUYs from cgt_sales
+      // Each sale record contains the original purchase info
+      const soldBuys: Transaction[] = (salesData || []).map((sale: any) => ({
+        id: `sold-buy-${sale.id}`,
+        type: 'BUY' as const,
+        ticker: sale.ticker,
+        name: sale.name || sale.ticker,
+        date: sale.purchase_date || sale.sale_date, // Use purchase_date if available
+        units: sale.units,
+        price: sale.purchase_price || (sale.cost_base / sale.units), // Calculate from cost_base if no purchase_price
+        total: sale.cost_base || (sale.units * sale.purchase_price),
+        brokerage: sale.buy_brokerage || 0,
+        wasSold: true, // Mark as sold
+      }))
+      
+      // Combine all BUYs (remaining + sold)
+      const allBuys = [...remainingBuys, ...soldBuys]
       
       // Transform SELLs
       const sells: Transaction[] = (salesData || []).map((sale: any) => ({
@@ -139,7 +158,7 @@ export default function ActivityPage() {
       }))
       
       // Combine and sort
-      const all = [...buys, ...sells].sort((a, b) => 
+      const all = [...allBuys, ...sells].sort((a, b) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()
       )
       
@@ -452,9 +471,13 @@ export default function ActivityPage() {
                                 </div>
                                 <div>
                                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                                    tx.type === 'BUY' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                    tx.type === 'BUY' 
+                                      ? tx.wasSold 
+                                        ? 'bg-gray-200 text-gray-600' 
+                                        : 'bg-emerald-100 text-emerald-700' 
+                                      : 'bg-red-100 text-red-700'
                                   }`}>
-                                    {tx.type}
+                                    {tx.type}{tx.wasSold ? ' (Sold)' : ''}
                                   </span>
                                   <span className="text-sm text-gray-600 ml-2">
                                     {tx.units.toLocaleString()} @ {fmt(tx.price)}
