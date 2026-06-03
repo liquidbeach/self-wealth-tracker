@@ -21,6 +21,7 @@ import {
   ArrowDownRight,
   Settings,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react'
 
 // Sector definitions - consistent across Dashboard & Performance Report
@@ -76,6 +77,7 @@ interface SoldLot {
   buy_brokerage: number
   sale_date: string
   purchase_date?: string
+  held_over_12_months?: boolean  // Field used by CGT Tracker
 }
 
 interface OperatingCost {
@@ -104,6 +106,16 @@ export default function PerformanceReportPage() {
   // Sector assignment state
   const [selectedHoldingId, setSelectedHoldingId] = useState('')
   const [selectedSector, setSelectedSector] = useState('')
+  const [expandedSectors, setExpandedSectors] = useState<string[]>([])
+
+  // Toggle sector expansion
+  const toggleSector = (sector: string) => {
+    setExpandedSectors(prev => 
+      prev.includes(sector) 
+        ? prev.filter(s => s !== sector)
+        : [...prev, sector]
+    )
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -307,37 +319,78 @@ export default function PerformanceReportPage() {
   // Calculate CGT with proper long-term/short-term split
   const calculateCGT = () => {
     let longTermGains = 0
+    let longTermLosses = 0
     let shortTermGains = 0
-    let losses = 0
+    let shortTermLosses = 0
 
     fySales.forEach(sale => {
-      if (sale.gross_gain > 0) {
-        // Check if held > 12 months (eligible for 50% discount)
-        // This would require purchase_date on cgt_sales - for now assume 50/50 split
-        longTermGains += sale.gross_gain * 0.5
-        shortTermGains += sale.gross_gain * 0.5
+      // Use held_over_12_months field from CGT Tracker
+      // Falls back to calculating from dates if not available
+      let isLongTerm = false
+      
+      if (sale.held_over_12_months !== undefined) {
+        isLongTerm = sale.held_over_12_months
+      } else if (sale.purchase_date && sale.sale_date) {
+        const purchaseDate = new Date(sale.purchase_date)
+        const saleDate = new Date(sale.sale_date)
+        const daysHeld = Math.floor((saleDate.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24))
+        isLongTerm = daysHeld >= 365
+      }
+      // If no data available, assume short-term (conservative)
+
+      if (sale.gross_gain >= 0) {
+        if (isLongTerm) {
+          longTermGains += sale.gross_gain
+        } else {
+          shortTermGains += sale.gross_gain
+        }
       } else {
-        losses += Math.abs(sale.gross_gain)
+        if (isLongTerm) {
+          longTermLosses += Math.abs(sale.gross_gain)
+        } else {
+          shortTermLosses += Math.abs(sale.gross_gain)
+        }
       }
     })
 
-    // Apply losses first
-    const netShortTerm = Math.max(0, shortTermGains - losses)
-    const remainingLosses = Math.max(0, losses - shortTermGains)
-    const netLongTerm = Math.max(0, longTermGains - remainingLosses)
+    // Apply losses (short-term losses offset short-term gains first, then long-term)
+    const totalLosses = shortTermLosses + longTermLosses
     
-    // 50% discount on long-term gains
+    // Net short-term after losses
+    let netShortTerm = shortTermGains
+    let remainingLosses = totalLosses
+    
+    if (remainingLosses > 0) {
+      const shortTermOffset = Math.min(netShortTerm, remainingLosses)
+      netShortTerm -= shortTermOffset
+      remainingLosses -= shortTermOffset
+    }
+    
+    // Net long-term after remaining losses
+    let netLongTerm = longTermGains
+    if (remainingLosses > 0) {
+      netLongTerm = Math.max(0, netLongTerm - remainingLosses)
+    }
+    
+    // 50% discount ONLY on long-term gains
     const discountApplied = netLongTerm * 0.5
-    const taxableGain = netShortTerm + (netLongTerm - discountApplied)
-    const cgtPayable = taxableGain * 0.325 // 32.5% marginal rate
+    const taxableLongTerm = netLongTerm - discountApplied
+    
+    // Total taxable = full short-term + discounted long-term
+    const totalTaxable = netShortTerm + taxableLongTerm
+    const cgtPayable = totalTaxable * 0.325 // 32.5% marginal rate
 
     return { 
+      shortTermGains,
+      shortTermLosses,
       longTermGains, 
-      shortTermGains, 
-      losses, 
+      longTermLosses,
+      netShortTerm,
+      netLongTerm,
       discountApplied, 
-      taxableGain, 
-      cgtPayable 
+      totalTaxable, 
+      cgtPayable,
+      totalLosses,
     }
   }
 
@@ -356,12 +409,6 @@ export default function PerformanceReportPage() {
   const capitalDeployed = portfolio.totalCost > 0 ? portfolio.totalCost : 1
   const netReturnPct = (netProfit / capitalDeployed) * 100
   const costRatio = (opCosts.total / (portfolio.totalValue > 0 ? portfolio.totalValue : 1)) * 100
-
-  // Benchmark comparison (placeholder - would need real API)
-  const sp500Return = 18.5
-  const asx200Return = 9.2
-  const alphaVsSP500 = netReturnPct - sp500Return
-  const alphaVsASX200 = netReturnPct - asx200Return
 
   if (!mounted) {
     return (
@@ -447,25 +494,19 @@ export default function PerformanceReportPage() {
             <p className={`text-2xl font-bold font-mono ${netReturnPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {fmtPct(netReturnPct)}
             </p>
+            <p className="text-xs text-slate-500 mt-1">Net after tax & costs</p>
           </div>
           <div className="text-center border-l border-r border-slate-700">
             <p className="text-xs text-slate-400 mb-1">vs S&P 500</p>
-            <p className="text-lg font-mono text-slate-300">{fmtPct(sp500Return)}</p>
-            <p className={`text-sm font-semibold ${alphaVsSP500 >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              Alpha: {fmtPct(alphaVsSP500)}
-            </p>
+            <p className="text-lg font-mono text-slate-500">—</p>
+            <p className="text-xs text-slate-500 mt-1">API pending</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-slate-400 mb-1">vs ASX 200</p>
-            <p className="text-lg font-mono text-slate-300">{fmtPct(asx200Return)}</p>
-            <p className={`text-sm font-semibold ${alphaVsASX200 >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              Alpha: {fmtPct(alphaVsASX200)}
-            </p>
+            <p className="text-lg font-mono text-slate-500">—</p>
+            <p className="text-xs text-slate-500 mt-1">API pending</p>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-3 text-center">
-          * Benchmark returns are placeholder values
-        </p>
       </div>
 
       {/* P&L Waterfall */}
@@ -548,10 +589,47 @@ export default function PerformanceReportPage() {
           {/* Tax */}
           <div className="pb-2 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-2">TAX (CGT)</p>
+            
+            {/* Short-term gains */}
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">50% CGT Discount (holdings ≥12 months)</span>
-              <span className="font-mono text-cyan-600">({fmt(cgt.discountApplied)})</span>
+              <span className="text-gray-600">Short-term gains (&lt;12 months)</span>
+              <span className="font-mono text-gray-700">{fmt(cgt.shortTermGains)}</span>
             </div>
+            
+            {/* Long-term gains */}
+            <div className="flex justify-between py-1">
+              <span className="text-gray-600">Long-term gains (≥12 months)</span>
+              <span className="font-mono text-gray-700">{fmt(cgt.longTermGains)}</span>
+            </div>
+            
+            {/* Losses */}
+            {cgt.totalLosses > 0 && (
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">Capital losses applied</span>
+                <span className="font-mono text-red-600">({fmt(cgt.totalLosses)})</span>
+              </div>
+            )}
+            
+            {/* 50% Discount - only if there are long-term gains */}
+            {cgt.discountApplied > 0 ? (
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">50% CGT Discount (long-term only)</span>
+                <span className="font-mono text-cyan-600">({fmt(cgt.discountApplied)})</span>
+              </div>
+            ) : (
+              <div className="flex justify-between py-1">
+                <span className="text-gray-500 italic">No 50% discount (no long-term gains)</span>
+                <span className="font-mono text-gray-400">$0.00</span>
+              </div>
+            )}
+            
+            {/* Taxable amount */}
+            <div className="flex justify-between py-1 border-t border-gray-100 mt-1 pt-1">
+              <span className="text-gray-600">Net Taxable Gain</span>
+              <span className="font-mono text-gray-700">{fmt(cgt.totalTaxable)}</span>
+            </div>
+            
+            {/* CGT Payable */}
             <div className="flex justify-between py-1">
               <span className="text-gray-600">CGT Payable @ 32.5%</span>
               <span className="font-mono text-red-600">({fmt(cgt.cgtPayable)})</span>
@@ -577,7 +655,7 @@ export default function PerformanceReportPage() {
           ASSIGN SECTOR TO HOLDING
         </h3>
         
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <label className="block text-xs text-gray-500 mb-1">Select Holding</label>
             <select
@@ -620,52 +698,76 @@ export default function PerformanceReportPage() {
             </button>
           </div>
         </div>
-
-        {/* Current Holdings List */}
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs text-gray-500 mb-2">CURRENT ASSIGNMENTS</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {holdings.map(h => {
-              const sectorInfo = SECTORS[h.sector || 'Other'] || SECTORS['Other']
-              return (
-                <div key={h.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                  <span className="font-mono text-sm font-bold text-gray-900">{h.ticker}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${sectorInfo.color} text-white truncate`}>
-                    {(h.sector || 'Other').replace('Infrastructure', 'Infra')}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
       </div>
 
-      {/* Sector Allocation Chart */}
+      {/* Sector Allocation Chart - Expandable */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <PieChart className="w-4 h-4 text-purple-600" />
           SECTOR ALLOCATION
         </h3>
         
-        <div className="space-y-3">
+        <div className="space-y-2">
           {Object.entries(portfolio.sectorValues)
             .sort((a, b) => b[1] - a[1])
             .map(([sector, value]) => {
               const pct = portfolio.totalValue > 0 ? (value / portfolio.totalValue) * 100 : 0
               const sectorInfo = SECTORS[sector] || SECTORS['Other']
+              const sectorHoldings = holdings.filter(h => (h.sector || 'Other') === sector)
+              const isExpanded = expandedSectors.includes(sector)
               
               return (
-                <div key={sector}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className={`font-medium ${sectorInfo.textColor}`}>{sectorInfo.name}</span>
-                    <span className="font-mono">{fmt(value)} ({pct.toFixed(1)}%)</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                <div key={sector} className="border border-gray-100 rounded-lg overflow-hidden">
+                  {/* Sector Header - Clickable */}
+                  <button
+                    onClick={() => toggleSector(sector)}
+                    className="w-full p-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex justify-between items-center text-sm mb-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <span className={`font-semibold ${sectorInfo.textColor}`}>{sectorInfo.name}</span>
+                        <span className="text-xs text-gray-400">({sectorHoldings.length} holdings)</span>
+                      </div>
+                      <span className="font-mono font-medium">{fmt(value)} ({pct.toFixed(1)}%)</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </button>
+                  
+                  {/* Expanded Holdings */}
+                  {isExpanded && sectorHoldings.length > 0 && (
+                    <div className="border-t border-gray-100 bg-gray-50 p-3">
+                      <div className="space-y-2">
+                        {sectorHoldings.map(h => {
+                          const holdingUnits = h.lots?.reduce((sum, lot) => sum + lot.units, 0) || 0
+                          const holdingPrice = prices[h.ticker] || 0
+                          let holdingValue = holdingUnits * holdingPrice
+                          if (h.currency === 'USD') {
+                            holdingValue *= exchangeRates.USD_AUD
+                          }
+                          const holdingPct = value > 0 ? (holdingValue / value) * 100 : 0
+                          
+                          return (
+                            <div key={h.id} className="flex items-center justify-between py-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-bold text-gray-700">{h.ticker}</span>
+                                <span className="text-xs text-gray-400">{holdingUnits} units</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono text-sm text-gray-900">{fmt(holdingValue)}</span>
+                                <span className="text-xs text-gray-400 ml-2">({holdingPct.toFixed(1)}%)</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}

@@ -74,20 +74,19 @@ export default function ActivityPage() {
     try {
       const supabase = createClient()
       
-      // Load BUYs from lots (with holdings for ticker/name)
+      // Load holdings first (for ticker/name lookup)
+      const { data: holdingsData } = await supabase
+        .from('holdings')
+        .select('id, ticker, name')
+      
+      const holdingsMap = new Map(
+        (holdingsData || []).map((h: any) => [h.id, { ticker: h.ticker, name: h.name }])
+      )
+      
+      // Load BUYs from lots
       const { data: lotsData } = await supabase
         .from('lots')
-        .select(`
-          id,
-          units,
-          purchase_price,
-          purchase_date,
-          brokerage,
-          holdings (
-            ticker,
-            name
-          )
-        `)
+        .select('id, holding_id, units, purchase_price, purchase_date, brokerage')
         .order('purchase_date', { ascending: false })
       
       // Load SELLs from cgt_sales
@@ -96,18 +95,21 @@ export default function ActivityPage() {
         .select('*')
         .order('sale_date', { ascending: false })
       
-      // Transform BUYs
-      const buys: Transaction[] = (lotsData || []).map((lot: any) => ({
-        id: `buy-${lot.id}`,
-        type: 'BUY' as const,
-        ticker: lot.holdings?.ticker || 'Unknown',
-        name: lot.holdings?.name || 'Unknown',
-        date: lot.purchase_date,
-        units: lot.units,
-        price: lot.purchase_price,
-        total: lot.units * lot.purchase_price,
-        brokerage: lot.brokerage || 0,
-      }))
+      // Transform BUYs (join with holdings map)
+      const buys: Transaction[] = (lotsData || []).map((lot: any) => {
+        const holding = holdingsMap.get(lot.holding_id) || { ticker: 'Unknown', name: 'Unknown' }
+        return {
+          id: `buy-${lot.id}`,
+          type: 'BUY' as const,
+          ticker: holding.ticker,
+          name: holding.name,
+          date: lot.purchase_date,
+          units: lot.units,
+          price: lot.purchase_price,
+          total: lot.units * lot.purchase_price,
+          brokerage: lot.brokerage || 0,
+        }
+      })
       
       // Transform SELLs
       const sells: Transaction[] = (salesData || []).map((sale: any) => ({
