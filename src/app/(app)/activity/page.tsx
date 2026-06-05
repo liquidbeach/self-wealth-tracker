@@ -165,12 +165,12 @@ export default function ActivityPage() {
       setTransactions(all)
       
       // Calculate stats
-      const totalBuyValue = buys.reduce((sum, t) => sum + t.total, 0)
+      const totalBuyValue = allBuys.reduce((sum, t) => sum + t.total, 0)
       const totalSellValue = sells.reduce((sum, t) => sum + t.total, 0)
       const netRealizedGain = sells.reduce((sum, t) => sum + (t.gain || 0), 0)
       
       setStats({
-        totalBuys: buys.length,
+        totalBuys: allBuys.length,
         totalSells: sells.length,
         totalBuyValue,
         totalSellValue,
