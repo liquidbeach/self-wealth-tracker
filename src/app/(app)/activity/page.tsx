@@ -236,8 +236,8 @@ export default function ActivityPage() {
   if (!mounted) {
     return (
       <div className="space-y-4 pb-20">
-        <h1 className="text-xl font-bold text-gray-900">Activity</h1>
-        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+        <h1 className="text-xl font-bold text-white">Activity</h1>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-8 text-center">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto text-gray-400" />
         </div>
       </div>
@@ -249,44 +249,44 @@ export default function ActivityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-indigo-600" />
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <Activity className="w-6 h-6 text-indigo-400" />
             Activity
           </h1>
           <p className="text-sm text-gray-500">Transaction history — BUYs & SELLs</p>
         </div>
         <button 
           onClick={loadTransactions}
-          className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"
+          className="p-2 bg-white/10 rounded-lg hover:bg-gray-700"
         >
-          <RefreshCw className={`w-4 h-4 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 text-gray-400 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
-            <ArrowDownCircle className="w-4 h-4 text-emerald-500" />
+            <ArrowDownCircle className="w-4 h-4 text-green-400" />
             <p className="text-xs text-gray-500">Total BUYs</p>
           </div>
-          <p className="text-xl font-bold text-gray-900">{filteredStats.buys}</p>
+          <p className="text-xl font-bold text-white">{filteredStats.buys}</p>
           <p className="text-xs text-gray-500">{fmt(filteredStats.buyValue)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
-            <ArrowUpCircle className="w-4 h-4 text-red-500" />
+            <ArrowUpCircle className="w-4 h-4 text-red-400" />
             <p className="text-xs text-gray-500">Total SELLs</p>
           </div>
-          <p className="text-xl font-bold text-gray-900">{filteredStats.sells}</p>
+          <p className="text-xl font-bold text-white">{filteredStats.sells}</p>
           <p className="text-xs text-gray-500">{fmt(filteredStats.sellValue)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4 col-span-2">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4 col-span-2">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-4 h-4 text-cyan-500" />
             <p className="text-xs text-gray-500">Realised Gain/Loss</p>
           </div>
-          <p className={`text-xl font-bold ${filteredStats.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xl font-bold ${filteredStats.realizedGain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {filteredStats.realizedGain >= 0 ? '+' : ''}{fmt(filteredStats.realizedGain)}
           </p>
           <p className="text-xs text-gray-500">From {filteredStats.sells} sales</p>
@@ -294,10 +294,10 @@ export default function ActivityPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Type Filter */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
             {(['ALL', 'BUY', 'SELL'] as const).map(type => (
               <button
                 key={type}
@@ -305,11 +305,11 @@ export default function ActivityPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   filterType === type
                     ? type === 'BUY' 
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-green-500/100/100 text-white'
                       : type === 'SELL'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-red-500/100 text-white'
+                        : 'bg-white/15 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 {type}
@@ -321,7 +321,7 @@ export default function ActivityPage() {
           <select
             value={filterFY}
             onChange={(e) => setFilterFY(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
           >
             <option value="">All Time</option>
             <option value="2025-2026">FY 2025-26</option>
@@ -337,14 +337,14 @@ export default function ActivityPage() {
               placeholder="Filter by ticker..."
               value={filterTicker}
               onChange={(e) => setFilterTicker(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
+              className="w-full pl-9 pr-3 py-2 border border-gray-800 rounded-lg text-sm"
             />
           </div>
 
           {/* Sort Order */}
           <button
             onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-            className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200"
+            className="flex items-center gap-1 px-3 py-2 bg-white/10 rounded-lg text-sm font-medium hover:bg-gray-700"
           >
             <Calendar className="w-4 h-4" />
             {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
@@ -354,7 +354,7 @@ export default function ActivityPage() {
       </div>
 
       {/* Transaction List - Grouped by Ticker */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <RefreshCw className="w-6 h-6 animate-spin mx-auto text-gray-400" />
@@ -371,7 +371,7 @@ export default function ActivityPage() {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-800">
             {/* Group transactions by ticker */}
             {(() => {
               // Get unique tickers in order of most recent transaction
@@ -401,7 +401,7 @@ export default function ActivityPage() {
                     {/* Ticker Header - Clickable */}
                     <button
                       onClick={() => toggleTicker(ticker)}
-                      className="w-full p-4 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                      className="w-full p-4 hover:bg-white/5 transition-colors flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3">
                         {isExpanded ? (
@@ -410,7 +410,7 @@ export default function ActivityPage() {
                           <ChevronDown className="w-5 h-5 text-gray-400" />
                         )}
                         <div className="text-left">
-                          <span className="font-mono font-bold text-gray-900 text-lg">{ticker}</span>
+                          <span className="font-mono font-bold text-white text-lg">{ticker}</span>
                           <p className="text-sm text-gray-500">{firstName}</p>
                         </div>
                       </div>
@@ -419,12 +419,12 @@ export default function ActivityPage() {
                         {/* Transaction counts */}
                         <div className="flex items-center gap-2">
                           {buys.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-700">
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-green-500/100/20 text-green-400">
                               {buys.length} BUY{buys.length !== 1 ? 's' : ''}
                             </span>
                           )}
                           {sells.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-700">
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-red-500/20 text-red-400">
                               {sells.length} SELL{sells.length !== 1 ? 's' : ''}
                             </span>
                           )}
@@ -433,13 +433,13 @@ export default function ActivityPage() {
                         {/* Total values */}
                         <div className="hidden sm:block">
                           {totalBuyValue > 0 && (
-                            <p className="text-sm text-gray-600">Bought: {fmt(totalBuyValue)}</p>
+                            <p className="text-sm text-gray-400">Bought: {fmt(totalBuyValue)}</p>
                           )}
                           {totalSellValue > 0 && (
-                            <p className="text-sm text-gray-600">Sold: {fmt(totalSellValue)}</p>
+                            <p className="text-sm text-gray-400">Sold: {fmt(totalSellValue)}</p>
                           )}
                           {sells.length > 0 && (
-                            <p className={`text-xs font-medium ${totalGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <p className={`text-xs font-medium ${totalGain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                               {totalGain >= 0 ? '+' : ''}{fmt(totalGain)}
                             </p>
                           )}
@@ -449,11 +449,11 @@ export default function ActivityPage() {
                     
                     {/* Expanded Transactions */}
                     {isExpanded && (
-                      <div className="bg-gray-50 border-t border-gray-100">
+                      <div className="bg-white/5 border-t border-gray-800/50">
                         {txs.map((tx) => (
                           <div
                             key={tx.id}
-                            className={`p-4 pl-12 border-b border-gray-100 last:border-b-0 ${
+                            className={`p-4 pl-12 border-b border-gray-800/50 last:border-b-0 ${
                               tx.type === 'BUY' ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-red-400'
                             }`}
                           >
@@ -461,25 +461,25 @@ export default function ActivityPage() {
                               {/* Left: Type badge */}
                               <div className="flex items-center gap-3">
                                 <div className={`p-1.5 rounded-full ${
-                                  tx.type === 'BUY' ? 'bg-emerald-100' : 'bg-red-100'
+                                  tx.type === 'BUY' ? 'bg-green-500/100/20' : 'bg-red-500/20'
                                 }`}>
                                   {tx.type === 'BUY' ? (
-                                    <ArrowDownCircle className="w-4 h-4 text-emerald-600" />
+                                    <ArrowDownCircle className="w-4 h-4 text-green-400" />
                                   ) : (
-                                    <ArrowUpCircle className="w-4 h-4 text-red-600" />
+                                    <ArrowUpCircle className="w-4 h-4 text-red-400" />
                                   )}
                                 </div>
                                 <div>
                                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                                     tx.type === 'BUY' 
                                       ? tx.wasSold 
-                                        ? 'bg-gray-200 text-gray-600' 
-                                        : 'bg-emerald-100 text-emerald-700' 
-                                      : 'bg-red-100 text-red-700'
+                                        ? 'bg-gray-700 text-gray-400' 
+                                        : 'bg-green-500/100/20 text-green-400' 
+                                      : 'bg-red-500/20 text-red-400'
                                   }`}>
                                     {tx.type}{tx.wasSold ? ' (Sold)' : ''}
                                   </span>
-                                  <span className="text-sm text-gray-600 ml-2">
+                                  <span className="text-sm text-gray-400 ml-2">
                                     {tx.units.toLocaleString()} @ {fmt(tx.price)}
                                   </span>
                                 </div>
@@ -487,11 +487,11 @@ export default function ActivityPage() {
 
                               {/* Right: Total & Date */}
                               <div className="text-right">
-                                <p className="text-sm font-bold text-gray-900">
+                                <p className="text-sm font-bold text-white">
                                   {tx.type === 'BUY' ? '-' : '+'}{fmt(tx.total)}
                                 </p>
                                 {tx.type === 'SELL' && tx.gain !== undefined && (
-                                  <p className={`text-xs ${tx.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  <p className={`text-xs ${tx.gain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {tx.gain >= 0 ? '+' : ''}{fmt(tx.gain)}
                                   </p>
                                 )}

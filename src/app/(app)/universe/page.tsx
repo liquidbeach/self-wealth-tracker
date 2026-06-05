@@ -244,7 +244,7 @@ function SupplyChainFlow({ stocks, activeLayer, onLayerClick }: SupplyChainFlowP
   return (
     <div className="bg-slate-900 rounded-2xl p-4 mb-6 overflow-hidden">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
           <Layers className="w-4 h-4" />
           AI Infrastructure Supply Chain
         </h3>
@@ -252,8 +252,8 @@ function SupplyChainFlow({ stocks, activeLayer, onLayerClick }: SupplyChainFlowP
           onClick={() => onLayerClick(null)}
           className={`text-xs px-3 py-1 rounded-full transition-colors ${
             activeLayer === null 
-              ? 'bg-white text-slate-900 font-semibold' 
-              : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-white/15 text-white font-semibold' 
+              : 'bg-slate-800 text-gray-500 hover:bg-slate-700'
           }`}
         >
           All Layers
@@ -289,7 +289,7 @@ function SupplyChainFlow({ stocks, activeLayer, onLayerClick }: SupplyChainFlowP
                   <Icon className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-bold tracking-tight">{layer.shortName}</span>
-                <span className={`text-[9px] mt-0.5 ${isActive ? 'text-white/80' : 'text-slate-500'}`}>
+                <span className={`text-[9px] mt-0.5 ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
                   {count} stock{count !== 1 ? 's' : ''}
                 </span>
               </button>
@@ -315,7 +315,7 @@ function SupplyChainFlow({ stocks, activeLayer, onLayerClick }: SupplyChainFlowP
                     <p className="text-sm font-semibold text-white">
                       Layer {layer.id}: {layer.name}
                     </p>
-                    <p className="text-xs text-slate-400">{layer.description}</p>
+                    <p className="text-xs text-gray-500">{layer.description}</p>
                   </div>
                 </>
               )
@@ -341,9 +341,9 @@ function StockCard({ stock, onEdit }: StockCardProps) {
   const layer = getStockLayer(stock)
   
   const statusColors = {
-    green: 'bg-emerald-500',
+    green: 'bg-green-500/100/100',
     amber: 'bg-amber-500',
-    red: 'bg-red-500',
+    red: 'bg-red-500/100',
   }
   
   const tierBadge = stock.tier === 'heavyweight' 
@@ -351,7 +351,7 @@ function StockCard({ stock, onEdit }: StockCardProps) {
     : 'bg-violet-600/20 text-violet-400 border border-violet-500/30'
   
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       {/* Main row */}
       <div 
         className="p-4 cursor-pointer"
@@ -363,12 +363,12 @@ function StockCard({ stock, onEdit }: StockCardProps) {
             <div className={`w-2 h-2 rounded-full mt-2 ${statusColors[stock.status_color]}`} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-gray-900 text-lg">{stock.ticker}</span>
+                <span className="font-mono font-bold text-white text-lg">{stock.ticker}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${tierBadge}`}>
                   {stock.tier === 'heavyweight' ? '⚓ HW' : '🚀 VEL'}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">{stock.name}</p>
+              <p className="text-sm text-gray-400">{stock.name}</p>
               
               {/* Layer Badge */}
               {layer && (
@@ -386,7 +386,7 @@ function StockCard({ stock, onEdit }: StockCardProps) {
             <div className="text-right hidden sm:block">
               <p className="text-xs text-gray-500">{stock.universe_sectors?.name}</p>
               {stock.market_cap && (
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-gray-300">
                   ${(stock.market_cap / 1e9).toFixed(0)}B
                 </p>
               )}
@@ -407,36 +407,36 @@ function StockCard({ stock, onEdit }: StockCardProps) {
       
       {/* Expanded content */}
       {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-4">
+        <div className="border-t border-gray-800/50 bg-white/5 p-4 space-y-4">
           {/* Thesis */}
           {stock.thesis && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Thesis</p>
-              <p className="text-sm text-gray-700">{stock.thesis}</p>
+              <p className="text-sm text-gray-300">{stock.thesis}</p>
             </div>
           )}
           
           {/* Catalysts */}
           {stock.catalysts && (
             <div>
-              <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">✓ Catalysts</p>
-              <p className="text-sm text-gray-700">{stock.catalysts}</p>
+              <p className="text-xs font-semibold text-green-400 uppercase mb-1">✓ Catalysts</p>
+              <p className="text-sm text-gray-300">{stock.catalysts}</p>
             </div>
           )}
           
           {/* Risks */}
           {stock.risks && (
             <div>
-              <p className="text-xs font-semibold text-red-600 uppercase mb-1">⚠ Risks</p>
-              <p className="text-sm text-gray-700">{stock.risks}</p>
+              <p className="text-xs font-semibold text-red-400 uppercase mb-1">⚠ Risks</p>
+              <p className="text-sm text-gray-300">{stock.risks}</p>
             </div>
           )}
           
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
             <a
               href={`/assessor?ticker=${stock.ticker}`}
-              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
             >
               <TrendingUp className="w-4 h-4" />
               Run Buffett Scanner
@@ -446,7 +446,7 @@ function StockCard({ stock, onEdit }: StockCardProps) {
                 e.stopPropagation()
                 onEdit(stock)
               }}
-              className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
             >
               <Settings className="w-4 h-4" />
               Edit
@@ -455,7 +455,7 @@ function StockCard({ stock, onEdit }: StockCardProps) {
               href={`https://finance.yahoo.com/quote/${stock.ticker}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 text-gray-500 text-sm hover:text-gray-700"
+              className="flex items-center gap-1 px-3 py-1.5 text-gray-500 text-sm hover:text-gray-300"
             >
               <ExternalLink className="w-4 h-4" />
               Yahoo
@@ -483,19 +483,19 @@ function HeaderStats({ totalStocks, heavyweightCount, velocityCount, unreadAlert
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
       <div className="bg-slate-900 rounded-xl p-3 text-center">
         <p className="text-2xl font-bold text-white">{totalStocks}</p>
-        <p className="text-xs text-slate-400">Total Stocks</p>
+        <p className="text-xs text-gray-500">Total Stocks</p>
       </div>
       <div className="bg-slate-800 rounded-xl p-3 text-center">
         <p className="text-2xl font-bold text-orange-400">11</p>
-        <p className="text-xs text-slate-400">Supply Chain Layers</p>
+        <p className="text-xs text-gray-500">Supply Chain Layers</p>
       </div>
       <div className="bg-slate-800 rounded-xl p-3 text-center">
         <p className="text-2xl font-bold text-slate-200">{heavyweightCount}</p>
-        <p className="text-xs text-slate-400">⚓ Heavyweights</p>
+        <p className="text-xs text-gray-500">⚓ Heavyweights</p>
       </div>
       <div className="bg-slate-800 rounded-xl p-3 text-center">
         <p className="text-2xl font-bold text-violet-400">{velocityCount}</p>
-        <p className="text-xs text-slate-400">🚀 Velocity</p>
+        <p className="text-xs text-gray-500">🚀 Velocity</p>
       </div>
     </div>
   )
@@ -522,7 +522,7 @@ function FiltersBar({
   viewMode, onViewModeChange, sectors, activeSector, onSectorChange
 }: FiltersBarProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+    <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4 mb-4">
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
@@ -532,18 +532,18 @@ function FiltersBar({
             placeholder="Search ticker, name, or thesis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-gray-800 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
         
         {/* View Mode Toggle */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center bg-white/10 rounded-lg p-1">
           <button
             onClick={() => onViewModeChange('supply-chain')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'supply-chain'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white/15 text-white shadow-sm'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             Supply Chain
@@ -552,8 +552,8 @@ function FiltersBar({
             onClick={() => onViewModeChange('sector')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'sector'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white/15 text-white shadow-sm'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             Sector
@@ -565,7 +565,7 @@ function FiltersBar({
           <select
             value={activeSector}
             onChange={(e) => onSectorChange(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
           >
             <option value="all">All Sectors</option>
             {sectors.map(s => (
@@ -578,7 +578,7 @@ function FiltersBar({
         <select
           value={tier}
           onChange={(e) => onTierChange(e.target.value)}
-          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+          className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
         >
           <option value="all">All Tiers</option>
           <option value="heavyweight">⚓ Heavyweights</option>
@@ -612,17 +612,17 @@ function AlertsPanel({ isOpen, onClose, alerts, onMarkAsRead, onMarkAllAsRead }:
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white shadow-xl">
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Alerts</h2>
+      <div className="relative w-full max-w-md bg-[#1c1c28] shadow-xl">
+        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">Alerts</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={onMarkAllAsRead}
-              className="text-xs text-emerald-600 hover:text-emerald-700"
+              className="text-xs text-green-400 hover:text-green-400"
             >
               Mark all read
             </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-400">✕</button>
           </div>
         </div>
         <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(100vh-80px)]">
@@ -633,15 +633,15 @@ function AlertsPanel({ isOpen, onClose, alerts, onMarkAsRead, onMarkAllAsRead }:
               <div
                 key={alert.id}
                 className={`p-3 rounded-lg border-l-4 ${
-                  alert.severity === 'red' ? 'bg-red-50 border-red-500' :
+                  alert.severity === 'red' ? 'bg-red-500/10 border-red-500' :
                   alert.severity === 'amber' ? 'bg-amber-50 border-amber-500' :
-                  'bg-emerald-50 border-emerald-500'
+                  'bg-green-500/100/10 border-emerald-500'
                 } ${alert.is_read ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-mono font-bold text-sm">{alert.universe_stocks?.ticker}</p>
-                    <p className="text-sm text-gray-700 mt-1">{alert.message}</p>
+                    <p className="text-sm text-gray-300 mt-1">{alert.message}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(alert.created_at).toLocaleDateString()}
                     </p>
@@ -649,7 +649,7 @@ function AlertsPanel({ isOpen, onClose, alerts, onMarkAsRead, onMarkAllAsRead }:
                   {!alert.is_read && (
                     <button
                       onClick={() => onMarkAsRead(alert.id)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
+                      className="text-xs text-gray-500 hover:text-gray-300"
                     >
                       ✓
                     </button>
@@ -758,9 +758,9 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-[#1c1c28] rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <h2 className="text-xl font-bold text-white mb-4">
             {mode === 'add' ? 'Add Stock' : mode === 'edit' ? 'Edit Stock' : 'Create Alert'}
           </h2>
           
@@ -768,11 +768,11 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
             {mode === 'alert' ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Stock</label>
                   <select
                     value={alertData.stock_id}
                     onChange={(e) => setAlertData({ ...alertData, stock_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     required
                   >
                     <option value="">Select stock...</option>
@@ -782,11 +782,11 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Severity</label>
                   <select
                     value={alertData.severity}
                     onChange={(e) => setAlertData({ ...alertData, severity: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                   >
                     <option value="red">🔴 Red (Critical)</option>
                     <option value="amber">🟡 Amber (Watch)</option>
@@ -794,11 +794,11 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Message</label>
                   <textarea
                     value={alertData.message}
                     onChange={(e) => setAlertData({ ...alertData, message: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     rows={3}
                     required
                   />
@@ -808,22 +808,22 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ticker</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Ticker</label>
                     <input
                       type="text"
                       value={formData.ticker}
                       onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                       required
                       disabled={mode === 'edit'}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sector</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Sector</label>
                     <select
                       value={formData.sector_id}
                       onChange={(e) => setFormData({ ...formData, sector_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                       required
                     >
                       <option value="">Select...</option>
@@ -834,33 +834,33 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     required
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tier</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Tier</label>
                     <select
                       value={formData.tier}
                       onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     >
                       <option value="heavyweight">Heavyweight</option>
                       <option value="velocity">Velocity</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
                     <select
                       value={formData.status_color}
                       onChange={(e) => setFormData({ ...formData, status_color: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     >
                       <option value="green">🟢 Green</option>
                       <option value="amber">🟡 Amber</option>
@@ -869,39 +869,39 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Market Cap ($)</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Market Cap ($)</label>
                   <input
                     type="number"
                     value={formData.market_cap}
                     onChange={(e) => setFormData({ ...formData, market_cap: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     placeholder="e.g. 500000000000"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Thesis</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Thesis</label>
                   <textarea
                     value={formData.thesis}
                     onChange={(e) => setFormData({ ...formData, thesis: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     rows={2}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Catalysts</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Catalysts</label>
                   <textarea
                     value={formData.catalysts}
                     onChange={(e) => setFormData({ ...formData, catalysts: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     rows={2}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Risks</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Risks</label>
                   <textarea
                     value={formData.risks}
                     onChange={(e) => setFormData({ ...formData, risks: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-lg"
                     rows={2}
                   />
                 </div>
@@ -912,14 +912,14 @@ function AdminModal({ isOpen, onClose, onSuccess, mode, stock, sectors, allStock
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-gray-300 hover:bg-white/10 rounded-lg"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -1094,8 +1094,8 @@ export default function UniversePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Globe className="w-7 h-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Globe className="w-7 h-7 text-green-400" />
             AI Infrastructure Universe
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -1105,20 +1105,20 @@ export default function UniversePage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAlerts(true)}
-            className="relative p-2 bg-slate-100 rounded-lg hover:bg-slate-200"
+            className="relative p-2 bg-white/10 rounded-lg hover:bg-gray-700"
           >
-            <Bell className="w-5 h-5 text-slate-600" />
+            <Bell className="w-5 h-5 text-gray-400" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500/100 text-white text-xs font-bold rounded-full flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
           </button>
           <button 
             onClick={handleRefresh}
-            className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"
+            className="p-2 bg-white/10 rounded-lg hover:bg-gray-700"
           >
-            <RefreshCw className={`w-5 h-5 text-slate-600 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -1161,7 +1161,7 @@ export default function UniversePage() {
             setAdminMode('add')
             setShowAdmin(true)
           }}
-          className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Stock
@@ -1172,7 +1172,7 @@ export default function UniversePage() {
             setAdminMode('alert')
             setShowAdmin(true)
           }}
-          className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors"
         >
           <Bell className="w-4 h-4" />
           Create Alert
@@ -1186,7 +1186,7 @@ export default function UniversePage() {
 
       {/* Stock Cards */}
       {filteredStocks.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-200">
+        <div className="text-center py-12 text-gray-500 bg-[#1c1c28] rounded-xl border border-gray-800">
           <Globe className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p className="font-medium">No stocks found</p>
           <p className="text-sm mt-1">Try adjusting your filters or search query</p>
@@ -1208,7 +1208,7 @@ export default function UniversePage() {
       )}
 
       {/* Footer */}
-      <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
+      <div className="mt-8 pt-4 border-t border-gray-800 text-center text-xs text-gray-400">
         Next refresh: June 2026 • Not financial advice • "Own every layer, own the future"
       </div>
 

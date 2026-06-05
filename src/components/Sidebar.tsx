@@ -86,17 +86,17 @@ export default function Sidebar() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200">
+      <div className="h-14 flex items-center justify-between px-4 border-b border-gray-800/50">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">SW</span>
           </div>
-          <span className="font-semibold text-slate-900 text-sm">Self Wealth</span>
+          <span className="font-semibold text-white text-sm">Self Wealth</span>
         </Link>
         {/* Mobile close button */}
         <button 
           onClick={() => setMobileMenuOpen(false)}
-          className="md:hidden p-1 text-slate-400 hover:text-slate-600"
+          className="md:hidden p-1 text-gray-500 hover:text-gray-400"
         >
           <X className="w-5 h-5" />
         </button>
@@ -112,11 +112,11 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-blue-500/100/15 text-blue-400'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <item.icon className={`w-4 h-4 ${isActive ? 'text-primary-600' : 'text-slate-400'}`} />
+              <item.icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-gray-500'}`} />
               {item.name}
             </Link>
           )
@@ -124,30 +124,30 @@ export default function Sidebar() {
       </nav>
 
       {/* User Menu */}
-      <div className="p-3 border-t border-slate-200">
+      <div className="p-3 border-t border-gray-800">
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
           >
-            <div className="w-7 h-7 bg-slate-200 rounded-full flex items-center justify-center">
-              <User className="w-3.5 h-3.5 text-slate-600" />
+            <div className="w-7 h-7 bg-gray-700 rounded-full flex items-center justify-center">
+              <User className="w-3.5 h-3.5 text-gray-400" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-xs font-medium text-slate-900 truncate">
+              <p className="text-xs font-medium text-white truncate">
                 {userEmail || 'User'}
               </p>
             </div>
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </button>
 
           {showUserMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20">
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1c1c28] rounded-lg shadow-lg border border-gray-800 py-1 z-20">
                 <Link
                   href="/settings"
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5"
                   onClick={() => setShowUserMenu(false)}
                 >
                   <Settings className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function Sidebar() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/100/10"
                 >
                   <LogOut className="w-4 h-4" />
                   Sign Out
@@ -171,19 +171,19 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 h-14">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#131722] border-b border-gray-800 h-14">
         <div className="flex items-center justify-between px-4 h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="p-2 -ml-2 text-gray-400 hover:bg-white/10 rounded-lg"
           >
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">SW</span>
             </div>
-            <span className="font-semibold text-slate-900 text-sm">Self Wealth</span>
+            <span className="font-semibold text-white text-sm">Self Wealth</span>
           </Link>
           <div className="w-9" /> {/* Spacer for centering */}
         </div>
@@ -198,14 +198,14 @@ export default function Sidebar() {
       )}
 
       {/* Mobile Sidebar */}
-      <aside className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform duration-200 ease-in-out ${
+      <aside className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-[#131722] transform transition-transform duration-200 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <SidebarContent />
       </aside>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block fixed left-0 top-0 z-40 h-screen w-56 bg-white border-r border-slate-200">
+      <aside className="hidden md:block fixed left-0 top-0 z-40 h-screen w-56 bg-[#131722] border-r border-gray-800">
         <SidebarContent />
       </aside>
     </>

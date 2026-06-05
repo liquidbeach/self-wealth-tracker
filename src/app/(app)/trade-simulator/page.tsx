@@ -15,8 +15,8 @@ export default function TradeSimulatorPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Target className="w-6 h-6 text-emerald-600" />
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <Target className="w-6 h-6 text-green-400" />
             Trade Simulator
           </h1>
           <p className="text-sm text-gray-500">Model entry → exit economics before pulling the trigger</p>
@@ -29,8 +29,8 @@ export default function TradeSimulatorPage() {
           onClick={() => setActiveTab('simulator')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'simulator'
-              ? 'bg-slate-800 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white/5 text-gray-400 border border-gray-800 hover:text-white hover:bg-white/10'
           }`}
         >
           <Calculator className="w-4 h-4" />
@@ -40,8 +40,8 @@ export default function TradeSimulatorPage() {
           onClick={() => setActiveTab('pullback')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'pullback'
-              ? 'bg-slate-800 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white/5 text-gray-400 border border-gray-800 hover:text-white hover:bg-white/10'
           }`}
         >
           <TrendingDown className="w-4 h-4" />

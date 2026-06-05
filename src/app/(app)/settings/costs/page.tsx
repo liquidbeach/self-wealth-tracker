@@ -284,8 +284,8 @@ export default function OperatingCostsPage() {
   if (!mounted) {
     return (
       <div className="space-y-4 pb-20">
-        <h1 className="text-xl font-bold text-gray-900">Operating Costs</h1>
-        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+        <h1 className="text-xl font-bold text-white">Operating Costs</h1>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-8 text-center">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto text-gray-400" />
         </div>
       </div>
@@ -296,8 +296,8 @@ export default function OperatingCostsPage() {
     <div className="space-y-4 pb-20">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Settings className="w-6 h-6 text-slate-600" />
+        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <Settings className="w-6 h-6 text-gray-400" />
           Operating Costs
         </h1>
         <p className="text-sm text-gray-500">Track monthly infrastructure & research costs</p>
@@ -308,33 +308,33 @@ export default function OperatingCostsPage() {
         <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl p-4 text-white">
           <p className="text-xs text-slate-300 mb-1">{fyTotals.fyLabel} Total</p>
           <p className="text-xl font-bold">{fmt(fyTotals.total)}</p>
-          <p className="text-xs text-slate-400">{fyTotals.months} months recorded</p>
+          <p className="text-xs text-gray-500">{fyTotals.months} months recorded</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Avg Monthly</p>
-          <p className="text-xl font-bold text-gray-900">{fmt(fyTotals.avgMonthly)}</p>
+          <p className="text-xl font-bold text-white">{fmt(fyTotals.avgMonthly)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Projected Annual</p>
-          <p className="text-xl font-bold text-gray-900">{fmt(fyTotals.projected)}</p>
+          <p className="text-xl font-bold text-white">{fmt(fyTotals.projected)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Current Month</p>
-          <p className="text-xl font-bold text-gray-900">{fmt(calculateTotal())}</p>
+          <p className="text-xl font-bold text-white">{fmt(calculateTotal())}</p>
         </div>
       </div>
 
       {/* Month Selector + Cost Entry */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <Calendar className="w-4 h-4 text-indigo-500" />
             ENTER MONTHLY COSTS
           </h3>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
           >
             {monthOptions().map(opt => (
               <option key={opt.key} value={opt.key}>{opt.label}</option>
@@ -350,7 +350,7 @@ export default function OperatingCostsPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Supabase</label>
+              <label className="block text-sm text-gray-400 mb-1">Supabase</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -358,13 +358,13 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.supabase}
                   onChange={(e) => setCosts(prev => ({ ...prev, supabase: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Database & Auth</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Vercel</label>
+              <label className="block text-sm text-gray-400 mb-1">Vercel</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -372,13 +372,13 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.vercel}
                   onChange={(e) => setCosts(prev => ({ ...prev, vercel: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Hosting & CDN</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">API Services</label>
+              <label className="block text-sm text-gray-400 mb-1">API Services</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -386,7 +386,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.api_services}
                   onChange={(e) => setCosts(prev => ({ ...prev, api_services: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Stock APIs, FX, etc.</p>
@@ -402,7 +402,7 @@ export default function OperatingCostsPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Claude Max</label>
+              <label className="block text-sm text-gray-400 mb-1">Claude Max</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -410,13 +410,13 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.claude_subscription}
                   onChange={(e) => setCosts(prev => ({ ...prev, claude_subscription: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">AI Research Assistant</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Other AI Tools</label>
+              <label className="block text-sm text-gray-400 mb-1">Other AI Tools</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -424,13 +424,13 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.other_ai_tools}
                   onChange={(e) => setCosts(prev => ({ ...prev, other_ai_tools: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">ChatGPT, Perplexity, etc.</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Other Costs</label>
+              <label className="block text-sm text-gray-400 mb-1">Other Costs</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <input
@@ -438,7 +438,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.other_costs}
                   onChange={(e) => setCosts(prev => ({ ...prev, other_costs: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Miscellaneous</p>
@@ -447,9 +447,9 @@ export default function OperatingCostsPage() {
         </div>
 
         {/* Total & Save */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
           <div>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-lg font-bold text-white">
               Monthly Total: <span className="font-mono">{fmt(calculateTotal())}</span>
             </p>
             <p className="text-sm text-gray-500">
@@ -461,7 +461,7 @@ export default function OperatingCostsPage() {
             disabled={saving}
             className={`px-6 py-2.5 text-sm font-medium rounded-lg flex items-center gap-2 ${
               saved 
-                ? 'bg-emerald-100 text-emerald-700' 
+                ? 'bg-green-500/100/20 text-green-400' 
                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
             } disabled:opacity-50`}
           >
@@ -472,12 +472,12 @@ export default function OperatingCostsPage() {
       </div>
 
       {/* Cost History */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+          className="w-full flex items-center justify-between p-4 hover:bg-white/5"
         >
-          <h3 className="text-sm font-semibold text-gray-900">COST HISTORY</h3>
+          <h3 className="text-sm font-semibold text-white">COST HISTORY</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">{costHistory.length} months</span>
             {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -485,28 +485,28 @@ export default function OperatingCostsPage() {
         </button>
         
         {showHistory && (
-          <div className="border-t border-gray-100">
+          <div className="border-t border-gray-800/50">
             {costHistory.length === 0 ? (
               <div className="p-8 text-center">
                 <DollarSign className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                 <p className="text-sm text-gray-500">No cost history yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-800">
                 {costHistory.map(cost => (
-                  <div key={cost.month} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                  <div key={cost.month} className="p-4 flex items-center justify-between hover:bg-white/5">
                     <div>
-                      <p className="font-medium text-gray-900">{formatMonth(cost.month)}</p>
+                      <p className="font-medium text-white">{formatMonth(cost.month)}</p>
                       <div className="flex gap-4 mt-1 text-xs text-gray-500">
                         <span>Infra: {fmt(cost.supabase + cost.vercel + cost.api_services)}</span>
                         <span>Research: {fmt(cost.claude_subscription + cost.other_ai_tools)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <p className="font-mono font-bold text-gray-900">{fmt(cost.total_monthly || 0)}</p>
+                      <p className="font-mono font-bold text-white">{fmt(cost.total_monthly || 0)}</p>
                       <button
                         onClick={() => deleteCost(cost.month)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/100/10 rounded"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -520,8 +520,8 @@ export default function OperatingCostsPage() {
       </div>
 
       {/* Info Note */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-        <p className="text-sm text-slate-600">
+      <div className="bg-white/5 border border-gray-800 rounded-xl p-4">
+        <p className="text-sm text-gray-400">
           <strong>Note:</strong> These costs are used in the Performance Report to calculate your net profit after operating expenses. 
           The Performance page reads from this data to show annualized costs in the P&L waterfall.
         </p>

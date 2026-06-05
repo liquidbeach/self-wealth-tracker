@@ -26,15 +26,15 @@ import {
 
 // Sector definitions - consistent across Dashboard & Performance Report
 const SECTORS: Record<string, { name: string; color: string; textColor: string; barColor: string }> = {
-  'AI Infrastructure': { name: 'AI Infrastructure', color: 'bg-purple-500', textColor: 'text-purple-600', barColor: 'from-purple-500 to-violet-500' },
-  'ETF': { name: 'ETFs (Base Returns)', color: 'bg-blue-500', textColor: 'text-blue-600', barColor: 'from-blue-500 to-cyan-500' },
-  'Mining': { name: 'Mining', color: 'bg-orange-500', textColor: 'text-orange-600', barColor: 'from-orange-500 to-amber-500' },
-  'Physical Infrastructure': { name: 'Physical Infrastructure', color: 'bg-emerald-500', textColor: 'text-emerald-600', barColor: 'from-emerald-500 to-teal-500' },
-  'Technology': { name: 'Technology', color: 'bg-cyan-500', textColor: 'text-cyan-600', barColor: 'from-cyan-500 to-blue-500' },
-  'Financials': { name: 'Financials', color: 'bg-green-500', textColor: 'text-green-600', barColor: 'from-green-500 to-emerald-500' },
-  'Materials': { name: 'Materials', color: 'bg-yellow-500', textColor: 'text-yellow-600', barColor: 'from-yellow-500 to-orange-500' },
-  'Diversified': { name: 'Diversified', color: 'bg-indigo-500', textColor: 'text-indigo-600', barColor: 'from-indigo-500 to-purple-500' },
-  'Other': { name: 'Other', color: 'bg-slate-400', textColor: 'text-slate-600', barColor: 'from-slate-400 to-gray-500' },
+  'AI Infrastructure': { name: 'AI Infrastructure', color: 'bg-purple-500/100', textColor: 'text-purple-400', barColor: 'from-purple-500 to-violet-500' },
+  'ETF': { name: 'ETFs (Base Returns)', color: 'bg-blue-500/100', textColor: 'text-blue-400', barColor: 'from-blue-500 to-cyan-500' },
+  'Mining': { name: 'Mining', color: 'bg-orange-500/100', textColor: 'text-yellow-400', barColor: 'from-orange-500 to-amber-500' },
+  'Physical Infrastructure': { name: 'Physical Infrastructure', color: 'bg-green-500/100/100', textColor: 'text-green-400', barColor: 'from-emerald-500 to-teal-500' },
+  'Technology': { name: 'Technology', color: 'bg-cyan-500/100', textColor: 'text-cyan-400', barColor: 'from-cyan-500 to-blue-500' },
+  'Financials': { name: 'Financials', color: 'bg-green-500/100', textColor: 'text-green-400', barColor: 'from-green-500 to-emerald-500' },
+  'Materials': { name: 'Materials', color: 'bg-yellow-500/100', textColor: 'text-yellow-400', barColor: 'from-yellow-500 to-orange-500' },
+  'Diversified': { name: 'Diversified', color: 'bg-indigo-500/100', textColor: 'text-indigo-400', barColor: 'from-indigo-500 to-purple-500' },
+  'Other': { name: 'Other', color: 'bg-slate-400', textColor: 'text-gray-400', barColor: 'from-slate-400 to-gray-500' },
 }
 
 const SECTOR_OPTIONS = [
@@ -413,8 +413,8 @@ export default function PerformanceReportPage() {
   if (!mounted) {
     return (
       <div className="space-y-4 pb-20">
-        <h1 className="text-xl font-bold text-gray-900">Performance Report</h1>
-        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
+        <h1 className="text-xl font-bold text-white">Performance Report</h1>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-8 text-center">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto text-gray-400" />
         </div>
       </div>
@@ -426,8 +426,8 @@ export default function PerformanceReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Briefcase className="w-6 h-6 text-emerald-600" />
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <Briefcase className="w-6 h-6 text-green-400" />
             Performance Report
           </h1>
           <p className="text-sm text-gray-500">Vueon Capital — Fund Performance</p>
@@ -436,46 +436,46 @@ export default function PerformanceReportPage() {
           <select
             value={selectedFY}
             onChange={(e) => setSelectedFY(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
           >
             <option value="2025-2026">FY 2025-26</option>
             <option value="2024-2025">FY 2024-25</option>
           </select>
           <button 
             onClick={loadData}
-            className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"
+            className="p-2 bg-white/10 rounded-lg hover:bg-gray-700"
           >
-            <RefreshCw className={`w-4 h-4 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-gray-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Portfolio Value</p>
-          <p className="text-xl font-bold text-gray-900">{fmt(portfolio.totalValue)}</p>
-          <p className={`text-xs ${portfolio.unrealisedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className="text-xl font-bold text-white">{fmt(portfolio.totalValue)}</p>
+          <p className={`text-xs ${portfolio.unrealisedGain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {fmtPct((portfolio.unrealisedGain / capitalDeployed) * 100)} unrealised
           </p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Net Profit (FY)</p>
-          <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {netProfit >= 0 ? '' : '-'}{fmt(netProfit)}
           </p>
           <p className="text-xs text-gray-500">After tax & costs</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Net Return</p>
-          <p className={`text-xl font-bold ${netReturnPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-xl font-bold ${netReturnPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {fmtPct(netReturnPct)}
           </p>
           <p className="text-xs text-gray-500">On deployed capital</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Cost Ratio</p>
-          <p className="text-xl font-bold text-gray-900">
+          <p className="text-xl font-bold text-white">
             {costRatio.toFixed(2)}%
           </p>
           <p className="text-xs text-gray-500">Of AUM</p>
@@ -490,69 +490,69 @@ export default function PerformanceReportPage() {
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <p className="text-xs text-slate-400 mb-1">YOUR RETURN</p>
+            <p className="text-xs text-gray-500 mb-1">YOUR RETURN</p>
             <p className={`text-2xl font-bold font-mono ${netReturnPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {fmtPct(netReturnPct)}
             </p>
-            <p className="text-xs text-slate-500 mt-1">Net after tax & costs</p>
+            <p className="text-xs text-gray-500 mt-1">Net after tax & costs</p>
           </div>
           <div className="text-center border-l border-r border-slate-700">
-            <p className="text-xs text-slate-400 mb-1">vs S&P 500</p>
-            <p className="text-lg font-mono text-slate-500">—</p>
-            <p className="text-xs text-slate-500 mt-1">API pending</p>
+            <p className="text-xs text-gray-500 mb-1">vs S&P 500</p>
+            <p className="text-lg font-mono text-gray-500">—</p>
+            <p className="text-xs text-gray-500 mt-1">API pending</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-slate-400 mb-1">vs ASX 200</p>
-            <p className="text-lg font-mono text-slate-500">—</p>
-            <p className="text-xs text-slate-500 mt-1">API pending</p>
+            <p className="text-xs text-gray-500 mb-1">vs ASX 200</p>
+            <p className="text-lg font-mono text-gray-500">—</p>
+            <p className="text-xs text-gray-500 mt-1">API pending</p>
           </div>
         </div>
       </div>
 
       {/* P&L Waterfall */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-emerald-600" />
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-green-400" />
           P&L WATERFALL — FY {selectedFY}
         </h3>
         
         <div className="space-y-2 text-sm">
           {/* Revenue */}
-          <div className="pb-2 border-b border-gray-100">
+          <div className="pb-2 border-b border-gray-800/50">
             <p className="text-xs font-semibold text-gray-500 mb-2">REVENUE (REALISED)</p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Trading Gains (Gross)</span>
-              <span className="font-mono text-emerald-600">{fmt(trading.grossGains)}</span>
+              <span className="text-gray-400">Trading Gains (Gross)</span>
+              <span className="font-mono text-green-400">{fmt(trading.grossGains)}</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Trading Losses</span>
-              <span className="font-mono text-red-600">({fmt(trading.grossLosses)})</span>
+              <span className="text-gray-400">Trading Losses</span>
+              <span className="font-mono text-red-400">({fmt(trading.grossLosses)})</span>
             </div>
             <div className="flex justify-between py-1 font-medium">
               <span>Net Trading Revenue</span>
-              <span className={`font-mono ${trading.netGains >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`font-mono ${trading.netGains >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {fmt(trading.netGains)}
               </span>
             </div>
           </div>
 
           {/* Trading Costs */}
-          <div className="pb-2 border-b border-gray-100">
+          <div className="pb-2 border-b border-gray-800/50">
             <p className="text-xs font-semibold text-gray-500 mb-2">TRADING COSTS</p>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Brokerage</span>
-              <span className="font-mono text-red-600">({fmt(tradingCosts.brokerage)})</span>
+              <span className="text-gray-400">Brokerage</span>
+              <span className="font-mono text-red-400">({fmt(tradingCosts.brokerage)})</span>
             </div>
             <div className="flex justify-between py-1 font-medium">
               <span>Gross Profit</span>
-              <span className={`font-mono ${grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`font-mono ${grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {fmt(grossProfit)}
               </span>
             </div>
           </div>
 
           {/* Operating Costs */}
-          <div className="pb-2 border-b border-gray-100">
+          <div className="pb-2 border-b border-gray-800/50">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
                 <Server className="w-3 h-3" />
@@ -560,18 +560,18 @@ export default function PerformanceReportPage() {
               </p>
               <Link 
                 href="/settings/costs" 
-                className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                className="text-xs text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
               >
                 Edit <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Infrastructure (Supabase, Vercel, APIs)</span>
-              <span className="font-mono text-red-600">({fmt(opCosts.infraTotal)})</span>
+              <span className="text-gray-400">Infrastructure (Supabase, Vercel, APIs)</span>
+              <span className="font-mono text-red-400">({fmt(opCosts.infraTotal)})</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Research & Analysis (Claude, AI Tools)</span>
-              <span className="font-mono text-red-600">({fmt(opCosts.researchTotal)})</span>
+              <span className="text-gray-400">Research & Analysis (Claude, AI Tools)</span>
+              <span className="font-mono text-red-400">({fmt(opCosts.researchTotal)})</span>
             </div>
             {opCosts.monthsRecorded > 0 && (
               <p className="text-xs text-gray-400 mt-1">
@@ -580,41 +580,41 @@ export default function PerformanceReportPage() {
             )}
             <div className="flex justify-between py-1 font-medium mt-2">
               <span>Operating Profit (EBIT)</span>
-              <span className={`font-mono ${operatingProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`font-mono ${operatingProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {fmt(operatingProfit)}
               </span>
             </div>
           </div>
 
           {/* Tax */}
-          <div className="pb-2 border-b border-gray-100">
+          <div className="pb-2 border-b border-gray-800/50">
             <p className="text-xs font-semibold text-gray-500 mb-2">TAX (CGT)</p>
             
             {/* Short-term gains */}
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Short-term gains (&lt;12 months)</span>
-              <span className="font-mono text-gray-700">{fmt(cgt.shortTermGains)}</span>
+              <span className="text-gray-400">Short-term gains (&lt;12 months)</span>
+              <span className="font-mono text-gray-300">{fmt(cgt.shortTermGains)}</span>
             </div>
             
             {/* Long-term gains */}
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">Long-term gains (≥12 months)</span>
-              <span className="font-mono text-gray-700">{fmt(cgt.longTermGains)}</span>
+              <span className="text-gray-400">Long-term gains (≥12 months)</span>
+              <span className="font-mono text-gray-300">{fmt(cgt.longTermGains)}</span>
             </div>
             
             {/* Losses */}
             {cgt.totalLosses > 0 && (
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">Capital losses applied</span>
-                <span className="font-mono text-red-600">({fmt(cgt.totalLosses)})</span>
+                <span className="text-gray-400">Capital losses applied</span>
+                <span className="font-mono text-red-400">({fmt(cgt.totalLosses)})</span>
               </div>
             )}
             
             {/* 50% Discount - only if there are long-term gains */}
             {cgt.discountApplied > 0 ? (
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">50% CGT Discount (long-term only)</span>
-                <span className="font-mono text-cyan-600">({fmt(cgt.discountApplied)})</span>
+                <span className="text-gray-400">50% CGT Discount (long-term only)</span>
+                <span className="font-mono text-cyan-400">({fmt(cgt.discountApplied)})</span>
               </div>
             ) : (
               <div className="flex justify-between py-1">
@@ -624,23 +624,23 @@ export default function PerformanceReportPage() {
             )}
             
             {/* Taxable amount */}
-            <div className="flex justify-between py-1 border-t border-gray-100 mt-1 pt-1">
-              <span className="text-gray-600">Net Taxable Gain</span>
-              <span className="font-mono text-gray-700">{fmt(cgt.totalTaxable)}</span>
+            <div className="flex justify-between py-1 border-t border-gray-800/50 mt-1 pt-1">
+              <span className="text-gray-400">Net Taxable Gain</span>
+              <span className="font-mono text-gray-300">{fmt(cgt.totalTaxable)}</span>
             </div>
             
             {/* CGT Payable */}
             <div className="flex justify-between py-1">
-              <span className="text-gray-600">CGT Payable @ 32.5%</span>
-              <span className="font-mono text-red-600">({fmt(cgt.cgtPayable)})</span>
+              <span className="text-gray-400">CGT Payable @ 32.5%</span>
+              <span className="font-mono text-red-400">({fmt(cgt.cgtPayable)})</span>
             </div>
           </div>
 
           {/* Net Profit */}
           <div className="pt-2 bg-gradient-to-r from-emerald-50 to-cyan-50 -mx-4 px-4 py-3 rounded-b-xl">
             <div className="flex justify-between items-baseline">
-              <span className="font-bold text-gray-900 text-base">NET PROFIT AFTER TAX</span>
-              <span className={`text-2xl font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className="font-bold text-white text-base">NET PROFIT AFTER TAX</span>
+              <span className={`text-2xl font-bold font-mono ${netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {netProfit >= 0 ? '' : '-'}{fmt(netProfit)}
               </span>
             </div>
@@ -649,9 +649,9 @@ export default function PerformanceReportPage() {
       </div>
 
       {/* Assign Sector */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Target className="w-4 h-4 text-purple-600" />
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <Target className="w-4 h-4 text-purple-400" />
           ASSIGN SECTOR TO HOLDING
         </h3>
         
@@ -661,7 +661,7 @@ export default function PerformanceReportPage() {
             <select
               value={selectedHoldingId}
               onChange={(e) => setSelectedHoldingId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="">Choose holding...</option>
               {holdings.map(h => (
@@ -677,7 +677,7 @@ export default function PerformanceReportPage() {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               disabled={!selectedHoldingId}
             >
               <option value="">Choose sector...</option>
@@ -701,9 +701,9 @@ export default function PerformanceReportPage() {
       </div>
 
       {/* Sector Allocation Chart - Expandable */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-purple-600" />
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-purple-400" />
           SECTOR ALLOCATION
         </h3>
         
@@ -717,11 +717,11 @@ export default function PerformanceReportPage() {
               const isExpanded = expandedSectors.includes(sector)
               
               return (
-                <div key={sector} className="border border-gray-100 rounded-lg overflow-hidden">
+                <div key={sector} className="border border-gray-800/50 rounded-lg overflow-hidden">
                   {/* Sector Header - Clickable */}
                   <button
                     onClick={() => toggleSector(sector)}
-                    className="w-full p-3 hover:bg-gray-50 transition-colors"
+                    className="w-full p-3 hover:bg-white/5 transition-colors"
                   >
                     <div className="flex justify-between items-center text-sm mb-2">
                       <div className="flex items-center gap-2">
@@ -731,7 +731,7 @@ export default function PerformanceReportPage() {
                       </div>
                       <span className="font-mono font-medium">{fmt(value)} ({pct.toFixed(1)}%)</span>
                     </div>
-                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className={`h-full bg-gradient-to-r ${sectorInfo.barColor} rounded-full transition-all`}
                         style={{ width: `${pct}%` }}
@@ -741,7 +741,7 @@ export default function PerformanceReportPage() {
                   
                   {/* Expanded Holdings */}
                   {isExpanded && sectorHoldings.length > 0 && (
-                    <div className="border-t border-gray-100 bg-gray-50 p-3">
+                    <div className="border-t border-gray-800/50 bg-white/5 p-3">
                       <div className="space-y-2">
                         {sectorHoldings.map(h => {
                           const holdingUnits = h.lots?.reduce((sum, lot) => sum + lot.units, 0) || 0
@@ -755,11 +755,11 @@ export default function PerformanceReportPage() {
                           return (
                             <div key={h.id} className="flex items-center justify-between py-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm font-bold text-gray-700">{h.ticker}</span>
+                                <span className="font-mono text-sm font-bold text-gray-300">{h.ticker}</span>
                                 <span className="text-xs text-gray-400">{holdingUnits} units</span>
                               </div>
                               <div className="text-right">
-                                <span className="font-mono text-sm text-gray-900">{fmt(holdingValue)}</span>
+                                <span className="font-mono text-sm text-white">{fmt(holdingValue)}</span>
                                 <span className="text-xs text-gray-400 ml-2">({holdingPct.toFixed(1)}%)</span>
                               </div>
                             </div>

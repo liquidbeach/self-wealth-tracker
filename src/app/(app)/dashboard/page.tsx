@@ -233,7 +233,7 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
         <div className="text-center">
-          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-emerald-500" />
+          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-green-400" />
           <p className="text-sm text-gray-500">Loading dashboard...</p>
         </div>
       </div>
@@ -245,13 +245,13 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-sm text-gray-500">Your investment overview</p>
         </div>
         <div className="flex items-center gap-2">
           {lastUpdate && <span className="text-xs text-gray-400 hidden sm:inline">{lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-          <button onClick={loadDashboard} disabled={refreshing} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-            <RefreshCw className={`w-4 h-4 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+          <button onClick={loadDashboard} disabled={refreshing} className="p-2 border border-gray-800 rounded-lg hover:bg-white/5">
+            <RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -272,12 +272,12 @@ export default function DashboardPage() {
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-gray-400">Gain/Loss <span className="text-cyan-400">(AUD)</span></span>
-            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
+            {stats.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
           </div>
-          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+          <p className={`text-xl sm:text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {stats.totalPnL >= 0 ? '+' : ''}${Math.abs(stats.totalPnL).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </p>
-          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+          <p className={`text-xs mt-0.5 font-semibold ${stats.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(1)}%
           </p>
         </div>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
                   <p className="text-xs font-semibold text-emerald-400 uppercase mb-1.5">Top Gainers</p>
                   <div className="space-y-1.5">
                     {stats.topGainers.map(h => (
-                      <div key={h.ticker} className="flex items-center justify-between bg-emerald-500/20 border border-emerald-500/30 rounded px-2 py-1.5">
+                      <div key={h.ticker} className="flex items-center justify-between bg-green-500/100/100/20 border border-emerald-500/30 rounded px-2 py-1.5">
                         <div>
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
                           <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
@@ -361,7 +361,7 @@ export default function DashboardPage() {
               )}
               {stats.topLosers.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-red-500 uppercase mb-1.5">Top Losers</p>
+                  <p className="text-xs font-semibold text-red-400 uppercase mb-1.5">Top Losers</p>
                   <div className="space-y-1.5">
                     {stats.topLosers.map(h => (
                       <div key={h.ticker} className="flex items-center justify-between bg-slate-700 border border-slate-600 rounded px-2 py-1.5">
@@ -369,7 +369,7 @@ export default function DashboardPage() {
                           <p className="text-sm font-medium text-white">{h.ticker}</p>
                           <p className="text-xs text-gray-400 truncate max-w-[120px]">{h.name}</p>
                         </div>
-                        <p className="text-sm font-bold text-red-600">{h.pnlPercent.toFixed(1)}%</p>
+                        <p className="text-sm font-bold text-red-400">{h.pnlPercent.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>
@@ -425,7 +425,7 @@ export default function DashboardPage() {
                   ) : (
                     <button
                       onClick={() => setEditingSectorId(h.id)}
-                      className="text-xs px-2 py-1 bg-slate-600 text-gray-300 rounded hover:bg-slate-500"
+                      className="text-xs px-2 py-1 bg-slate-600 text-gray-300 rounded hover:bg-white/50"
                     >
                       {h.sector || 'Other'}
                     </button>

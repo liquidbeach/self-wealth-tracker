@@ -161,7 +161,7 @@ export default function TradeSimulatorCore() {
   if (!mounted) {
     return (
       <div className="space-y-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
           <p className="text-gray-500">Loading...</p>
         </div>
       </div>
@@ -174,16 +174,16 @@ export default function TradeSimulatorCore() {
       <div className="flex justify-end">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg"
+          className="flex items-center gap-1.5 px-3 py-2 bg-white/10 text-gray-300 text-sm font-medium rounded-lg"
         >
           <History className="w-4 h-4" />
           History
-          <span className="bg-slate-300 text-xs px-1.5 py-0.5 rounded-full">{scenarios.length}</span>
+          <span className="bg-gray-700 text-xs px-1.5 py-0.5 rounded-full">{scenarios.length}</span>
         </button>
       </div>
 
       {/* Input Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">TICKER</label>
@@ -192,7 +192,7 @@ export default function TradeSimulatorCore() {
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               placeholder="NVDA"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+              className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
             />
           </div>
           <div>
@@ -202,7 +202,7 @@ export default function TradeSimulatorCore() {
               value={entryPrice}
               onChange={(e) => setEntryPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+              className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
             />
           </div>
           <div>
@@ -212,7 +212,7 @@ export default function TradeSimulatorCore() {
               value={exitPrice}
               onChange={(e) => setExitPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+              className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
             />
           </div>
           <div>
@@ -222,7 +222,7 @@ export default function TradeSimulatorCore() {
               value={shares}
               onChange={(e) => setShares(e.target.value)}
               placeholder="100"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+              className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
             />
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function TradeSimulatorCore() {
               <button
                 key={q.label}
                 onClick={() => setExitPrice((entry * q.mult).toFixed(2))}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-white/5 border-gray-800 text-gray-400 hover:bg-white/10"
               >
                 {q.label}
               </button>
@@ -246,14 +246,14 @@ export default function TradeSimulatorCore() {
         {/* Advanced Toggle */}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
         >
           {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           Show Capital Loss Offset & Brokerage
         </button>
 
         {showAdvanced && (
-          <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-800/50">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">CAPITAL LOSS OFFSET</label>
               <input
@@ -261,7 +261,7 @@ export default function TradeSimulatorCore() {
                 value={capitalLoss}
                 onChange={(e) => setCapitalLoss(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+                className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
               />
             </div>
             <div>
@@ -271,7 +271,7 @@ export default function TradeSimulatorCore() {
                 value={brokerage}
                 onChange={(e) => setBrokerage(e.target.value)}
                 placeholder="3.00"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono"
+                className="w-full px-3 py-2 bg-white/5 border border-gray-700 rounded-lg text-sm font-mono text-white placeholder:text-gray-600"
               />
             </div>
           </div>
@@ -314,24 +314,24 @@ export default function TradeSimulatorCore() {
 
           {/* Hurdle Banner */}
           <div className={`rounded-xl p-4 border ${
-            hurdleStatus === 'MOMENTUM' ? 'bg-emerald-50 border-emerald-200' :
-            hurdleStatus === 'CAVALRY' ? 'bg-yellow-50 border-yellow-200' :
-            'bg-red-50 border-red-200'
+            hurdleStatus === 'MOMENTUM' ? 'bg-green-500/10 border-green-500/20' :
+            hurdleStatus === 'CAVALRY' ? 'bg-yellow-500/10 border-yellow-500/20' :
+            'bg-red-500/10 border-red-500/20'
           }`}>
             <div className="flex items-center gap-3">
-              {hurdleStatus === 'MOMENTUM' && <CheckCircle className="w-6 h-6 text-emerald-600" />}
-              {hurdleStatus === 'CAVALRY' && <Zap className="w-6 h-6 text-yellow-600" />}
-              {hurdleStatus === 'BELOW' && <XCircle className="w-6 h-6 text-red-500" />}
+              {hurdleStatus === 'MOMENTUM' && <CheckCircle className="w-6 h-6 text-green-400" />}
+              {hurdleStatus === 'CAVALRY' && <Zap className="w-6 h-6 text-yellow-400" />}
+              {hurdleStatus === 'BELOW' && <XCircle className="w-6 h-6 text-red-400" />}
               <div>
                 <p className={`font-bold ${
-                  hurdleStatus === 'MOMENTUM' ? 'text-emerald-700' :
-                  hurdleStatus === 'CAVALRY' ? 'text-yellow-700' : 'text-red-700'
+                  hurdleStatus === 'MOMENTUM' ? 'text-green-400' :
+                  hurdleStatus === 'CAVALRY' ? 'text-yellow-400' : 'text-red-400'
                 }`}>
                   {hurdleStatus === 'MOMENTUM' && 'MOMENTUM HURDLE CLEARED'}
                   {hurdleStatus === 'CAVALRY' && 'CAVALRY HURDLE CLEARED'}
                   {hurdleStatus === 'BELOW' && 'BELOW CAVALRY HURDLE (15%)'}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-400">
                   {fmtPct(upsidePct)} upside
                   {hurdleStatus === 'MOMENTUM' && ' qualifies for Momentum tier (20%+ target)'}
                   {hurdleStatus === 'CAVALRY' && ' meets Cavalry minimum (15-20% pre-tax)'}
@@ -344,46 +344,46 @@ export default function TradeSimulatorCore() {
           {/* CGT Scenario Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Short Term Card */}
-            <div className="rounded-xl border-t-4 border-t-orange-400 bg-white border border-gray-200 p-4">
+            <div className="rounded-xl border-t-4 border-t-red-500 bg-[#1c1c28] border border-gray-800 p-4">
               <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-5 h-5 text-orange-500" />
-                <h3 className="font-bold text-gray-900">Sell &lt; 12 Months</h3>
+                <Clock className="w-5 h-5 text-yellow-400" />
+                <h3 className="font-bold text-white">Sell &lt; 12 Months</h3>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">Gross Capital Gain</span>
-                  <span className={`font-mono font-semibold ${grossGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">Gross Capital Gain</span>
+                  <span className={`font-mono font-semibold ${grossGain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {fmt(grossGain)}
                   </span>
                 </div>
                 {loss > 0 && (
-                  <div className="flex justify-between py-1 border-b border-gray-100">
-                    <span className="text-gray-600">Less: Capital Loss Offset</span>
-                    <span className="font-mono text-orange-600">-{fmt(loss)}</span>
+                  <div className="flex justify-between py-1 border-b border-gray-800/50">
+                    <span className="text-gray-400">Less: Capital Loss Offset</span>
+                    <span className="font-mono text-yellow-400">-{fmt(loss)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">Taxable Amount</span>
-                  <span className="font-mono">{fmt(netGainAfterLoss)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">Taxable Amount</span>
+                  <span className="font-mono text-white">{fmt(netGainAfterLoss)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">CGT @ 32.5%</span>
-                  <span className="font-mono text-red-600">-{fmt(taxShort)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">CGT @ 32.5%</span>
+                  <span className="font-mono text-red-400">-{fmt(taxShort)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-100">
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
                   <span className="text-gray-500 text-xs">Brokerage (Buy + Sell)</span>
                   <span className="font-mono text-gray-500 text-xs">-{fmt(brk * 2)}</span>
                 </div>
-                <div className="pt-2 border-t-2 border-gray-200">
+                <div className="pt-2 border-t-2 border-gray-800">
                   <div className="flex justify-between items-baseline">
-                    <span className="font-semibold text-gray-900">Net Profit (After Tax)</span>
-                    <span className={`text-xl font-bold font-mono ${netProfitShort >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className="font-semibold text-white">Net Profit (After Tax)</span>
+                    <span className={`text-xl font-bold font-mono ${netProfitShort >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {fmt(netProfitShort)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-xs text-gray-500">Net Return on Capital</span>
-                    <span className={`font-mono text-sm font-semibold ${netReturnShort >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`font-mono text-sm font-semibold ${netReturnShort >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {fmtPct(netReturnShort)}
                     </span>
                   </div>
@@ -392,50 +392,50 @@ export default function TradeSimulatorCore() {
             </div>
 
             {/* Long Term Card */}
-            <div className="rounded-xl border-t-4 border-t-emerald-400 bg-white border border-gray-200 p-4">
+            <div className="rounded-xl border-t-4 border-t-green-500 bg-[#1c1c28] border border-gray-800 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="w-5 h-5 text-emerald-500" />
-                <h3 className="font-bold text-gray-900">Sell &gt; 12 Months (CGT Discount)</h3>
+                <h3 className="font-bold text-white">Sell &gt; 12 Months (CGT Discount)</h3>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">Gross Capital Gain</span>
-                  <span className={`font-mono font-semibold ${grossGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">Gross Capital Gain</span>
+                  <span className={`font-mono font-semibold ${grossGain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {fmt(grossGain)}
                   </span>
                 </div>
                 {loss > 0 && (
-                  <div className="flex justify-between py-1 border-b border-gray-100">
-                    <span className="text-gray-600">Less: Capital Loss Offset</span>
-                    <span className="font-mono text-orange-600">-{fmt(loss)}</span>
+                  <div className="flex justify-between py-1 border-b border-gray-800/50">
+                    <span className="text-gray-400">Less: Capital Loss Offset</span>
+                    <span className="font-mono text-yellow-400">-{fmt(loss)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">50% CGT Discount</span>
-                  <span className="font-mono text-cyan-600">-{fmt(netGainAfterLoss * 0.5)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">50% CGT Discount</span>
+                  <span className="font-mono text-cyan-400">-{fmt(netGainAfterLoss * 0.5)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">Taxable Amount</span>
-                  <span className="font-mono">{fmt(netGainAfterLoss * 0.5)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">Taxable Amount</span>
+                  <span className="font-mono text-white">{fmt(netGainAfterLoss * 0.5)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-100">
-                  <span className="text-gray-600">CGT @ 32.5%</span>
-                  <span className="font-mono text-red-600">-{fmt(taxLong)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
+                  <span className="text-gray-400">CGT @ 32.5%</span>
+                  <span className="font-mono text-red-400">-{fmt(taxLong)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-100">
+                <div className="flex justify-between py-1 border-b border-gray-800/50">
                   <span className="text-gray-500 text-xs">Brokerage (Buy + Sell)</span>
                   <span className="font-mono text-gray-500 text-xs">-{fmt(brk * 2)}</span>
                 </div>
-                <div className="pt-2 border-t-2 border-gray-200">
+                <div className="pt-2 border-t-2 border-gray-800">
                   <div className="flex justify-between items-baseline">
-                    <span className="font-semibold text-gray-900">Net Profit (After Tax)</span>
-                    <span className={`text-xl font-bold font-mono ${netProfitLong >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className="font-semibold text-white">Net Profit (After Tax)</span>
+                    <span className={`text-xl font-bold font-mono ${netProfitLong >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {fmt(netProfitLong)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-xs text-gray-500">Net Return on Capital</span>
-                    <span className={`font-mono text-sm font-semibold ${netReturnLong >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`font-mono text-sm font-semibold ${netReturnLong >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {fmtPct(netReturnLong)}
                     </span>
                   </div>
@@ -469,9 +469,9 @@ export default function TradeSimulatorCore() {
           )}
 
           {/* Exit Scenario Table */}
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-              <h4 className="text-sm font-semibold text-purple-600 flex items-center gap-2">
+          <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-gray-800/50">
+              <h4 className="text-sm font-semibold text-purple-400 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
                 EXIT SCENARIO TABLE — {ticker.toUpperCase() || 'STOCK'} @ {fmt(entry)} × {qty} shares
               </h4>
@@ -479,7 +479,7 @@ export default function TradeSimulatorCore() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
+                  <tr className="border-b border-gray-800">
                     <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">Exit $</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">Upside %</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">Gross Gain</th>
@@ -506,17 +506,17 @@ export default function TradeSimulatorCore() {
                       <tr
                         key={mult}
                         onClick={() => setExitPrice(rowExit.toFixed(2))}
-                        className="border-b border-gray-50 cursor-pointer hover:bg-gray-50"
+                        className="border-b border-gray-800/30 cursor-pointer hover:bg-white/5"
                       >
-                        <td className="px-3 py-2 text-right font-mono">${rowExit.toFixed(0)}</td>
-                        <td className={`px-3 py-2 text-right font-mono ${rowUp >= 15 ? 'text-emerald-600' : 'text-orange-500'}`}>
+                        <td className="px-3 py-2 text-right font-mono text-white">${rowExit.toFixed(0)}</td>
+                        <td className={`px-3 py-2 text-right font-mono ${rowUp >= 15 ? 'text-green-400' : 'text-yellow-400'}`}>
                           {rowUp.toFixed(0)}%
                         </td>
-                        <td className="px-3 py-2 text-right font-mono">{fmt(rowGross)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-red-500">{fmt(rowTaxS)}</td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-600">{fmt(rowNetS)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-red-500">{fmt(rowTaxL)}</td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-600">{fmt(rowNetL)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-white">{fmt(rowGross)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-red-400">{fmt(rowTaxS)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-green-400">{fmt(rowNetS)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-red-400">{fmt(rowTaxL)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-green-400">{fmt(rowNetL)}</td>
                         <td className="px-3 py-2 text-right text-xs">{rowHurdle}</td>
                       </tr>
                     )
@@ -524,14 +524,14 @@ export default function TradeSimulatorCore() {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-gray-400 text-center py-2 bg-gray-50">
+            <p className="text-xs text-gray-400 text-center py-2 bg-white/5">
               Click any row to set as exit target • MOM = Momentum (20%+) • CAV = Cavalry (15%+)
             </p>
           </div>
 
           {/* Save Section */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Save className="w-4 h-4 text-gray-400" />
               Save to Decision Journal
             </h4>
@@ -540,12 +540,12 @@ export default function TradeSimulatorCore() {
               onChange={(e) => setTradeThesis(e.target.value)}
               placeholder="Why are you considering this trade?"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-3"
+              className="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm mb-3 bg-white/5 text-white placeholder:text-gray-600"
             />
             <button
               onClick={saveScenario}
               disabled={saving || !ticker}
-              className="w-full py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Scenario
@@ -553,37 +553,37 @@ export default function TradeSimulatorCore() {
           </div>
         </>
       ) : (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
-          <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+        <div className="bg-white/5 border border-gray-700 rounded-xl p-8 text-center">
+          <Target className="w-12 h-12 text-gray-700 mx-auto mb-3" />
           <p className="text-gray-500">Enter entry price, exit price, and shares to see analysis</p>
         </div>
       )}
 
       {/* History Panel */}
       {showHistory && scenarios.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl">
-          <div className="p-4 border-b border-gray-100">
-            <h4 className="text-sm font-semibold text-gray-900">Decision Journal</h4>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl">
+          <div className="p-4 border-b border-gray-800/50">
+            <h4 className="text-sm font-semibold text-white">Decision Journal</h4>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-800">
             {scenarios.map((s) => (
               <div key={s.id} className="p-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="font-bold">{s.ticker}</span>
+                    <span className="font-bold text-white">{s.ticker}</span>
                     <span className="text-gray-400 mx-2">→</span>
-                    <span className="font-mono text-sm">${s.entry_price} → ${s.exit_price}</span>
+                    <span className="font-mono text-sm text-gray-300">${s.entry_price} → ${s.exit_price}</span>
                     <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium ${
-                      s.hurdle_status === 'MOMENTUM' ? 'bg-emerald-100 text-emerald-700' :
-                      s.hurdle_status === 'CAVALRY' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
+                      s.hurdle_status === 'MOMENTUM' ? 'bg-green-500/20 text-green-400' :
+                      s.hurdle_status === 'CAVALRY' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-red-500/20 text-red-400'
                     }`}>{s.hurdle_status}</span>
                   </div>
-                  <button onClick={() => deleteScenario(s.id)} className="text-gray-400 hover:text-red-500">
+                  <button onClick={() => deleteScenario(s.id)} className="text-gray-400 hover:text-red-400">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                {s.trade_thesis && <p className="text-xs text-gray-600 italic mt-2">&quot;{s.trade_thesis}&quot;</p>}
+                {s.trade_thesis && <p className="text-xs text-gray-400 italic mt-2">&quot;{s.trade_thesis}&quot;</p>}
                 <p className="text-xs text-gray-400 mt-2">{new Date(s.created_at).toLocaleDateString('en-AU')}</p>
               </div>
             ))}
