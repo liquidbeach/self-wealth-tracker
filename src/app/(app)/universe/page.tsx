@@ -192,12 +192,13 @@ interface Alert {
 // ============================================================================
 
 function getStockLayer(stock: UniverseStock): SupplyChainLayer | null {
-  const sectorSlug = stock.universe_sectors?.slug
-  if (!sectorSlug) return null
+  // Use sector_id directly (matches the sector id in database)
+  const sectorId = stock.sector_id
+  if (!sectorId) return null
   
   // Find matching layer - check ticker-specific filters first
   for (const layer of SUPPLY_CHAIN_LAYERS) {
-    if (layer.sectorIds.includes(sectorSlug)) {
+    if (layer.sectorIds.includes(sectorId)) {
       // If layer has ticker filter, check if stock matches
       if (layer.filterTickers) {
         if (layer.filterTickers.includes(stock.ticker)) {
@@ -212,7 +213,7 @@ function getStockLayer(stock: UniverseStock): SupplyChainLayer | null {
   
   // Fallback: find by sector only (for stocks not in ticker filter)
   for (const layer of SUPPLY_CHAIN_LAYERS) {
-    if (layer.sectorIds.includes(sectorSlug) && !layer.filterTickers) {
+    if (layer.sectorIds.includes(sectorId) && !layer.filterTickers) {
       return layer
     }
   }
