@@ -639,22 +639,20 @@ export default function PullbackCalculator() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/yahoo-finance?ticker=${sym.toUpperCase()}`)
+      const res = await fetch(`/api/pullback-quote?symbol=${sym.toUpperCase()}`)
       if (!res.ok) throw new Error('Failed to fetch stock data')
       const data = await res.json()
 
-      const price = data.regularMarketPrice || data.currentPrice || data.price || 0
-      const high52 = data.fiftyTwoWeekHigh || data.weekHigh52 || price * 1.3
-      const low52 = data.fiftyTwoWeekLow || data.weekLow52 || price * 0.6
+      if (data.error) throw new Error(data.error)
 
       setStockData({
-        ticker: sym.toUpperCase(),
-        name: data.shortName || data.longName || data.name || sym.toUpperCase(),
-        currentPrice: price,
-        weekHigh52: high52,
-        weekLow52: low52,
-        change: data.regularMarketChange || data.change || 0,
-        changePercent: data.regularMarketChangePercent || data.changePercent || 0,
+        ticker: data.symbol || sym.toUpperCase(),
+        name: data.name || sym.toUpperCase(),
+        currentPrice: data.currentPrice || 0,
+        weekHigh52: data.weekHigh52 || 0,
+        weekLow52: data.weekLow52 || 0,
+        change: data.change || 0,
+        changePercent: data.changePercent || 0,
       })
       setTicker(sym.toUpperCase())
     } catch (err) {
