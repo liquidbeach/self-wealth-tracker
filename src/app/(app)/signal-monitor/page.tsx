@@ -19,6 +19,9 @@ import {
   Crosshair,
   BarChart3,
   ExternalLink,
+  Plus,
+  Search,
+  X,
 } from 'lucide-react'
 
 // ═══════════════════════════════════════════════════════════════
@@ -149,6 +152,11 @@ export default function SignalMonitorPage() {
   const [sortAsc, setSortAsc] = useState(false)
   const [filterZone, setFilterZone] = useState<string>('all')
   const [deployment, setDeployment] = useState(DEFAULT_DEPLOYMENT)
+  
+  // Add Ticker state
+  const [showAddTicker, setShowAddTicker] = useState(false)
+  const [addTickerInput, setAddTickerInput] = useState('')
+  const [addingTicker, setAddingTicker] = useState(false)
 
   const runScan = useCallback(async () => {
     setLoading(true)
@@ -227,6 +235,70 @@ export default function SignalMonitorPage() {
     runScan()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Add a manual ticker
+  const addTicker = useCallback(async (ticker: string) => {
+    const sym = ticker.trim().toUpperCase()
+    if (!sym) return
+
+    // Check if already in the list
+    if (signals.some(s => s.ticker === sym)) {
+      setError(`${sym} is already in the list`)
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
+    setAddingTicker(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/pullback-quote?symbol=${sym}`)
+      if (!res.ok) throw new Error(`Could not find ${sym}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+
+      const pullbackFromHigh = data.weekHigh52 > 0
+        ? ((data.weekHigh52 - data.currentPrice) / data.weekHigh52) * 100
+        : 0
+      const rangePosition = (data.weekHigh52 - data.weekLow52) > 0
+        ? ((data.currentPrice - data.weekLow52) / (data.weekHigh52 - data.weekLow52)) * 100
+        : 50
+
+      const strikeZone = getStrikeZone(pullbackFromHigh)
+      const hurdle = getHurdleStatus(pullbackFromHigh)
+      const potential = calcPotentialProfit(data.currentPrice, pullbackFromHigh, deployment)
+
+      const newSignal: MergedSignal = {
+        ticker: data.symbol || sym,
+        name: data.name || sym,
+        tier: 'manual',
+        thesis: null,
+        currentPrice: data.currentPrice,
+        change: data.change || 0,
+        changePercent: data.changePercent || 0,
+        weekHigh52: data.weekHigh52,
+        weekLow52: data.weekLow52,
+        pullbackFromHigh: Math.round(pullbackFromHigh * 100) / 100,
+        rangePosition: Math.round(rangePosition * 100) / 100,
+        strikeZone,
+        hurdle,
+        potential,
+      }
+
+      setSignals(prev => [...prev, newSignal])
+      setAddTickerInput('')
+      setShowAddTicker(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to add ${sym}`)
+    } finally {
+      setAddingTicker(false)
+    }
+  }, [signals, deployment])
+
+  // Remove a manually added ticker
+  const removeTicker = (ticker: string) => {
+    setSignals(prev => prev.filter(s => s.ticker !== ticker))
+  }
+
   // Sorting
   const sorted = [...signals].sort((a, b) => {
     let diff = 0
@@ -283,6 +355,46 @@ export default function SignalMonitorPage() {
               Last scan: {lastScan}
             </span>
           )}
+          
+          {/* Add Ticker */}
+          {showAddTicker ? (
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  value={addTickerInput}
+                  onChange={(e) => setAddTickerInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && addTickerInput.trim()) addTicker(addTickerInput) }}
+                  placeholder="e.g. AAPL"
+                  autoFocus
+                  className="w-32 pl-9 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm font-mono placeholder:text-gray-600 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <button
+                onClick={() => addTicker(addTickerInput)}
+                disabled={addingTicker || !addTickerInput.trim()}
+                className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              >
+                {addingTicker ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+              </button>
+              <button
+                onClick={() => { setShowAddTicker(false); setAddTickerInput('') }}
+                className="p-2 text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddTicker(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Ticker
+            </button>
+          )}
+
           <button
             onClick={runScan}
             disabled={loading}
@@ -434,11 +546,13 @@ export default function SignalMonitorPage() {
                         <div>
                           <span className="font-mono font-bold text-white">{signal.ticker}</span>
                           <span className={`ml-2 text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                            signal.tier === 'heavyweight'
-                              ? 'bg-purple-500/20 text-purple-400'
-                              : 'bg-blue-500/20 text-blue-400'
+                            signal.tier === 'manual'
+                              ? 'bg-cyan-500/20 text-cyan-400'
+                              : signal.tier === 'heavyweight'
+                                ? 'bg-purple-500/20 text-purple-400'
+                                : 'bg-blue-500/20 text-blue-400'
                           }`}>
-                            {signal.tier === 'heavyweight' ? 'HW' : 'VEL'}
+                            {signal.tier === 'manual' ? 'ADD' : signal.tier === 'heavyweight' ? 'HW' : 'VEL'}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 truncate max-w-[160px]">{signal.name}</p>
@@ -508,13 +622,24 @@ export default function SignalMonitorPage() {
 
                       {/* Action */}
                       <td className="px-3 py-3 text-center">
-                        <Link
-                          href={`/trade-simulator?tab=pullback&ticker=${signal.ticker}`}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 hover:bg-blue-600/30 transition-colors"
-                        >
-                          <Crosshair className="w-3 h-3" />
-                          Analyse
-                        </Link>
+                        <div className="flex items-center justify-center gap-1">
+                          <Link
+                            href={`/trade-simulator?tab=pullback&ticker=${signal.ticker}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 hover:bg-blue-600/30 transition-colors"
+                          >
+                            <Crosshair className="w-3 h-3" />
+                            Analyse
+                          </Link>
+                          {signal.tier === 'manual' && (
+                            <button
+                              onClick={() => removeTicker(signal.ticker)}
+                              className="p-1 text-gray-600 hover:text-red-400 transition-colors"
+                              title="Remove"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
