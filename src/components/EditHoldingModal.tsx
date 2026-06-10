@@ -145,25 +145,25 @@ export default function EditHoldingModal({ isOpen, onClose, onSuccess, onDelete,
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="relative bg-[#1c1c28] rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-800">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Edit Holding</h2>
-              <p className="text-sm text-slate-500">{holding.ticker}</p>
+              <h2 className="text-xl font-semibold text-white">Edit Holding</h2>
+              <p className="text-sm text-gray-500">{holding.ticker}</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -175,7 +175,7 @@ export default function EditHoldingModal({ isOpen, onClose, onSuccess, onDelete,
                 <input
                   type="text"
                   value={holding.ticker}
-                  className="input bg-slate-50"
+                  className="input bg-white/5"
                   disabled
                 />
               </div>
@@ -197,7 +197,7 @@ export default function EditHoldingModal({ isOpen, onClose, onSuccess, onDelete,
                 <input
                   type="text"
                   value={holding.market}
-                  className="input bg-slate-50"
+                  className="input bg-white/5"
                   disabled
                 />
               </div>
@@ -278,11 +278,11 @@ export default function EditHoldingModal({ isOpen, onClose, onSuccess, onDelete,
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between pt-4 border-t border-slate-200">
+            <div className="flex justify-between pt-4 border-t border-gray-800">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                className="text-red-400 hover:text-red-400 hover:bg-red-500/100/10 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -318,13 +318,13 @@ export default function EditHoldingModal({ isOpen, onClose, onSuccess, onDelete,
 
           {/* Delete Confirmation */}
           {showDeleteConfirm && (
-            <div className="absolute inset-0 bg-white rounded-xl flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#1c1c28] rounded-xl flex items-center justify-center p-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trash2 className="w-8 h-8 text-red-600" />
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Holding?</h3>
-                <p className="text-slate-600 mb-6">
+                <h3 className="text-lg font-semibold text-white mb-2">Delete Holding?</h3>
+                <p className="text-gray-400 mb-6">
                   This will permanently delete <strong>{holding.ticker}</strong> and all its purchase lots. This action cannot be undone.
                 </p>
                 <div className="flex justify-center gap-3">

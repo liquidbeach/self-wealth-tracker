@@ -76,25 +76,25 @@ export default function AddLotModal({ isOpen, onClose, onSuccess, holding }: Add
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="relative bg-[#1c1c28] rounded-xl shadow-xl w-full max-w-md">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-800">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Add Lot</h2>
-              <p className="text-sm text-slate-500">{holding.ticker} - {holding.name}</p>
+              <h2 className="text-xl font-semibold text-white">Add Lot</h2>
+              <p className="text-sm text-gray-500">{holding.ticker} - {holding.name}</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -151,9 +151,9 @@ export default function AddLotModal({ isOpen, onClose, onSuccess, holding }: Add
 
             {/* Summary */}
             {units && purchasePrice && (
-              <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-sm text-slate-600">
-                  Total Cost: <span className="font-semibold text-slate-900">
+              <div className="bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-gray-400">
+                  Total Cost: <span className="font-semibold text-white">
                     {holding.currency === 'INR' ? '₹' : '$'}
                     {(parseFloat(units) * parseFloat(purchasePrice)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>

@@ -62,10 +62,10 @@ export default function RefreshPricesButton({ onSuccess, className = '' }: Refre
         disabled={loading}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           status === 'success' 
-            ? 'bg-green-100 text-green-700' 
+            ? 'bg-green-500/20 text-green-400' 
             : status === 'error'
-            ? 'bg-red-100 text-red-700'
-            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            ? 'bg-red-500/20 text-red-400'
+            : 'bg-white/10 hover:bg-gray-700 text-gray-300'
         }`}
       >
         {loading ? (
@@ -80,7 +80,7 @@ export default function RefreshPricesButton({ onSuccess, className = '' }: Refre
         {loading ? 'Updating...' : status === 'success' ? message : status === 'error' ? 'Error' : 'Refresh Prices'}
       </button>
       {status === 'error' && message && (
-        <span className="text-xs text-red-600">{message}</span>
+        <span className="text-xs text-red-400">{message}</span>
       )}
     </div>
   )

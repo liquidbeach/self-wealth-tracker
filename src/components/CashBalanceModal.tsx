@@ -163,28 +163,28 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="relative bg-[#1c1c28] rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900">Manage Cash Balances</h2>
+          <div className="flex items-center justify-between p-6 border-b border-gray-800">
+            <h2 className="text-xl font-semibold text-white">Manage Cash Balances</h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
 
             {initialLoad ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-gray-500">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                 Loading...
               </div>
@@ -193,10 +193,10 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                 {/* Balances List */}
                 <div className="space-y-3">
                   {balances.map((balance, index) => (
-                    <div key={balance.id || `new-${index}`} className="flex gap-3 items-start p-4 bg-slate-50 rounded-lg">
+                    <div key={balance.id || `new-${index}`} className="flex gap-3 items-start p-4 bg-white/5 rounded-lg">
                       <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
-                          <label className="text-xs text-slate-500">Account Name</label>
+                          <label className="text-xs text-gray-500">Account Name</label>
                           {balance.isNew ? (
                             <select
                               value={balance.account_name}
@@ -219,7 +219,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                           )}
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500">Currency</label>
+                          <label className="text-xs text-gray-500">Currency</label>
                           <select
                             value={balance.currency}
                             onChange={(e) => updateBalance(index, 'currency', e.target.value)}
@@ -232,7 +232,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500">Balance</label>
+                          <label className="text-xs text-gray-500">Balance</label>
                           <input
                             type="number"
                             value={balance.balance}
@@ -243,7 +243,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500">Notes</label>
+                          <label className="text-xs text-gray-500">Notes</label>
                           <input
                             type="text"
                             value={balance.notes || ''}
@@ -256,7 +256,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                       <button
                         type="button"
                         onClick={() => removeBalance(index)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-4"
+                        className="p-2 text-red-400 hover:bg-red-500/100/10 rounded-lg transition-colors mt-4"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -265,7 +265,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                 </div>
 
                 {balances.length === 0 && (
-                  <div className="text-center py-8 text-slate-400">
+                  <div className="text-center py-8 text-gray-500">
                     No cash balances yet. Add your first one below.
                   </div>
                 )}
@@ -274,7 +274,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
                 <button
                   type="button"
                   onClick={addNewBalance}
-                  className="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-primary-500 hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add Cash Account
@@ -283,7 +283,7 @@ export default function CashBalanceModal({ isOpen, onClose, onSuccess }: CashBal
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
               <button
                 type="button"
                 onClick={onClose}

@@ -605,7 +605,7 @@ export default function CGTPage() {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
         <div className="text-center">
-          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-emerald-500" />
+          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-green-400" />
           <p className="text-sm text-gray-500">Loading CGT data...</p>
         </div>
       </div>
@@ -617,12 +617,12 @@ export default function CGTPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">CGT Tracker</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">CGT Tracker</h1>
           <p className="text-sm text-gray-500">Australian Capital Gains Tax tracking</p>
         </div>
         <button
           onClick={() => setShowAddSale(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700"
+          className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-600"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">Record Sale</span>
@@ -634,7 +634,7 @@ export default function CGTPage() {
       <div className="bg-slate-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <Calculator className="w-4 h-4 text-slate-400" />
+            <Calculator className="w-4 h-4 text-gray-500" />
             <select
               value={viewingFY}
               onChange={(e) => {
@@ -650,7 +650,7 @@ export default function CGTPage() {
               ))}
             </select>
             {computedFYSummary.is_finalized && (
-              <span className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">
+              <span className="flex items-center gap-1 text-xs bg-green-600 text-white px-2 py-0.5 rounded">
                 <Lock className="w-3 h-3" />
                 Finalized
               </span>
@@ -676,25 +676,25 @@ export default function CGTPage() {
         {/* Main Summary Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div>
-            <p className="text-xs text-slate-400">Gross Gains</p>
+            <p className="text-xs text-gray-500">Gross Gains</p>
             <p className="text-xl sm:text-2xl font-bold text-emerald-400">
               {formatCurrency(computedFYSummary.total_gross_gains)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">50% Discount</p>
+            <p className="text-xs text-gray-500">50% Discount</p>
             <p className="text-xl sm:text-2xl font-bold text-cyan-400">
               -{formatCurrency(computedFYSummary.total_discounts)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Losses Applied</p>
+            <p className="text-xs text-gray-500">Losses Applied</p>
             <p className="text-xl sm:text-2xl font-bold text-orange-400">
               -{formatCurrency(computedFYSummary.losses_applied)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Net Taxable</p>
+            <p className="text-xs text-gray-500">Net Taxable</p>
             <p className={`text-xl sm:text-2xl font-bold ${computedFYSummary.net_taxable_gain >= 0 ? 'text-white' : 'text-orange-400'}`}>
               {formatCurrency(computedFYSummary.net_taxable_gain)}
             </p>
@@ -704,7 +704,7 @@ export default function CGTPage() {
         {/* Carry Forward Details */}
         {showCarryForward && (
           <div className="mt-4 pt-4 border-t border-slate-700">
-            <h4 className="text-xs font-medium text-slate-400 mb-3 flex items-center gap-2">
+            <h4 className="text-xs font-medium text-gray-500 mb-3 flex items-center gap-2">
               <ArrowRight className="w-3 h-3" />
               Carry Forward Breakdown
             </h4>
@@ -774,12 +774,12 @@ export default function CGTPage() {
             {/* Manual Adjustment Input (only for non-finalized FYs) */}
             {!computedFYSummary.is_finalized && (
               <div className="mt-4 pt-4 border-t border-slate-700">
-                <label className="text-xs text-slate-400 mb-2 block">
+                <label className="text-xs text-gray-500 mb-2 block">
                   Manual Loss Adjustment (pre-SWT losses or corrections)
                 </label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                     <input
                       type="number"
                       value={manualLossAdjustment}
@@ -797,7 +797,7 @@ export default function CGTPage() {
                   />
                   <button
                     onClick={saveManualAdjustment}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded"
+                    className="px-3 py-2 bg-green-600 hover:bg-green-600 text-white text-sm rounded"
                   >
                     Save
                   </button>
@@ -818,7 +818,7 @@ export default function CGTPage() {
               ) : (
                 <button
                   onClick={() => finalizeFY(viewingFY)}
-                  className="flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded"
+                  className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-600 text-white px-3 py-1.5 rounded"
                 >
                   <Lock className="w-3 h-3" />
                   Finalize FY (after tax filing)
@@ -844,15 +844,15 @@ export default function CGTPage() {
       </div>
 
       {/* Real Balance Calculator */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-green-400" />
             Real Balance Calculator
           </h3>
           <button
             onClick={() => setShowRealBalance(!showRealBalance)}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-gray-500 hover:text-gray-300"
           >
             {showRealBalance ? 'Hide' : 'Show'}
           </button>
@@ -877,14 +877,14 @@ export default function CGTPage() {
                     value={offsetBalance}
                     onChange={(e) => setOffsetBalance(e.target.value)}
                     placeholder="50000"
-                    className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Enter your current offset/savings balance</p>
               </div>
 
               {/* CGT Calculation Breakdown */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
                 <p className="text-xs font-medium text-orange-800 mb-2">CGT Calculation (FY {viewingFY})</p>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
@@ -897,10 +897,10 @@ export default function CGTPage() {
                   </div>
                   <div className="flex justify-between pt-1 border-t border-orange-300">
                     <span className="font-medium text-orange-800">CGT Owed:</span>
-                    <span className="font-bold text-orange-600">{formatCurrency(cgtOwed)}</span>
+                    <span className="font-bold text-yellow-400">{formatCurrency(cgtOwed)}</span>
                   </div>
                 </div>
-                <p className="text-xs text-orange-600 mt-2">
+                <p className="text-xs text-yellow-400 mt-2">
                   {salary > 0 
                     ? `Using marginal rate based on salary in Tax Estimator.`
                     : `Using default 32.5%. Enter salary in Tax Estimator for your actual rate.`
@@ -910,25 +910,25 @@ export default function CGTPage() {
 
               {/* Real Balance Result */}
               {offsetAmt > 0 && (
-                <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-emerald-200 rounded-lg p-4">
+                <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 border border-green-500/20 rounded-lg p-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Offset Balance</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(offsetAmt)}</span>
+                      <span className="text-gray-400">Offset Balance</span>
+                      <span className="font-medium text-white">{formatCurrency(offsetAmt)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Less: CGT Owed</span>
-                      <span className="font-medium text-orange-600">({formatCurrency(cgtOwed)})</span>
+                      <span className="text-gray-400">Less: CGT Owed</span>
+                      <span className="font-medium text-yellow-400">({formatCurrency(cgtOwed)})</span>
                     </div>
                     <div className="border-t border-emerald-300 pt-2 flex justify-between">
-                      <span className="font-semibold text-gray-900">Your Real Balance, John</span>
-                      <span className="text-xl font-bold text-emerald-600">
+                      <span className="font-semibold text-white">Your Real Balance, John</span>
+                      <span className="text-xl font-bold text-green-400">
                         {formatCurrency(realBalance)}
                       </span>
                     </div>
                   </div>
                   
-                  <p className="text-xs text-emerald-700 mt-3 flex items-start gap-1">
+                  <p className="text-xs text-green-400 mt-3 flex items-start gap-1">
                     <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                     This is your spendable balance after reserving {formatCurrency(cgtOwed)} for CGT.
                   </p>
@@ -937,13 +937,13 @@ export default function CGTPage() {
             </div>
           ) : (
             <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-400">
                 {offsetAmt > 0 
                   ? `Balance: ${formatCurrency(offsetAmt)} | CGT Owed: ${formatCurrency(cgtOwed)}` 
                   : 'Enter your offset balance to see real available funds'}
               </span>
               {offsetAmt > 0 && (
-                <span className="text-sm font-semibold text-emerald-600">
+                <span className="text-sm font-semibold text-green-400">
                   Real: {formatCurrency(realBalance)}
                 </span>
               )}
@@ -954,8 +954,8 @@ export default function CGTPage() {
 
       {/* Tax Estimator Panel */}
       {showTaxEstimator && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-gray-400" />
             Tax Estimator (FY {currentFY})
           </h3>
@@ -969,37 +969,37 @@ export default function CGTPage() {
                 value={baseSalary}
                 onChange={(e) => setBaseSalary(e.target.value)}
                 placeholder="120000"
-                className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          <div className="bg-white/5 rounded-lg p-3 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Base Salary</span>
-              <span className="font-medium text-gray-900">{formatCurrency(salary)}</span>
+              <span className="text-gray-400">Base Salary</span>
+              <span className="font-medium text-white">{formatCurrency(salary)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">+ Net Capital Gains</span>
-              <span className={`font-medium ${currentFYSummary.netCapitalGain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+              <span className="text-gray-400">+ Net Capital Gains</span>
+              <span className={`font-medium ${currentFYSummary.netCapitalGain >= 0 ? 'text-green-400' : 'text-yellow-400'}`}>
                 {formatCurrency(currentFYSummary.netCapitalGain)}
               </span>
             </div>
-            <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-              <span className="text-gray-600">Taxable Income</span>
-              <span className="font-bold text-gray-900">{formatCurrency(taxableIncome)}</span>
+            <div className="border-t border-gray-800 pt-2 flex justify-between text-sm">
+              <span className="text-gray-400">Taxable Income</span>
+              <span className="font-bold text-white">{formatCurrency(taxableIncome)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Income Tax</span>
-              <span className="font-medium text-gray-900">{formatCurrency(incomeTax)}</span>
+              <span className="text-gray-400">Income Tax</span>
+              <span className="font-medium text-white">{formatCurrency(incomeTax)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Medicare Levy (2%)</span>
-              <span className="font-medium text-gray-900">{formatCurrency(medicareLevyFull)}</span>
+              <span className="text-gray-400">Medicare Levy (2%)</span>
+              <span className="font-medium text-white">{formatCurrency(medicareLevyFull)}</span>
             </div>
-            <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-              <span className="font-semibold text-gray-900">Total Tax Estimate</span>
-              <span className="font-bold text-orange-600">{formatCurrency(totalTax)}</span>
+            <div className="border-t border-gray-800 pt-2 flex justify-between text-sm">
+              <span className="font-semibold text-white">Total Tax Estimate</span>
+              <span className="font-bold text-yellow-400">{formatCurrency(totalTax)}</span>
             </div>
             <div className="flex justify-between text-xs text-gray-500 pt-1">
               <span>Marginal Rate</span>
@@ -1019,9 +1019,9 @@ export default function CGTPage() {
       )}
 
       {/* Sales History */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-800/50">
+          <h3 className="font-semibold text-white flex items-center gap-2">
             <FileText className="w-4 h-4 text-gray-400" />
             Sales History
           </h3>
@@ -1029,7 +1029,7 @@ export default function CGTPage() {
         </div>
 
         {soldLots.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-800">
             {Object.entries(salesByFY)
               .sort((a, b) => b[0].localeCompare(a[0]))
               .map(([fy, sales]) => {
@@ -1040,14 +1040,14 @@ export default function CGTPage() {
                   <div key={fy}>
                     <button
                       onClick={() => toggleYear(fy)}
-                      className="w-full flex items-center justify-between p-3 sm:p-4 bg-gray-50 hover:bg-gray-100"
+                      className="w-full flex items-center justify-between p-3 sm:p-4 bg-white/5 hover:bg-white/10"
                     >
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                        <span className="text-sm font-medium text-gray-900">FY {fy}</span>
+                        <span className="text-sm font-medium text-white">FY {fy}</span>
                         <span className="text-xs text-gray-500">({sales.length} sales)</span>
                       </div>
-                      <span className={`text-sm font-semibold ${fySum.netCapitalGain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                      <span className={`text-sm font-semibold ${fySum.netCapitalGain >= 0 ? 'text-green-400' : 'text-yellow-400'}`}>
                         Net: {formatCurrency(fySum.netCapitalGain)}
                       </span>
                     </button>
@@ -1058,12 +1058,12 @@ export default function CGTPage() {
                           <div key={sale.id} className="p-3 sm:p-4">
                             <div className="flex items-center justify-between mb-2">
                               <div>
-                                <p className="font-medium text-gray-900">{sale.ticker}</p>
+                                <p className="font-medium text-white">{sale.ticker}</p>
                                 <p className="text-xs text-gray-500">{sale.name}</p>
                               </div>
                               <button
                                 onClick={() => handleDeleteSale(sale.id)}
-                                className="p-1 text-gray-400 hover:text-red-600"
+                                className="p-1 text-gray-400 hover:text-red-400"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1072,26 +1072,26 @@ export default function CGTPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                               <div>
                                 <p className="text-gray-500">Units Sold</p>
-                                <p className="font-medium text-gray-900">{sale.units.toLocaleString()}</p>
+                                <p className="font-medium text-white">{sale.units.toLocaleString()}</p>
                               </div>
                               <div>
                                 <p className="text-gray-500">Sale Date</p>
-                                <p className="font-medium text-gray-900">
+                                <p className="font-medium text-white">
                                   {new Date(sale.sale_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-gray-500">Proceeds (AUD)</p>
-                                <p className="font-medium text-gray-900">{formatCurrency(sale.proceeds)}</p>
+                                <p className="font-medium text-white">{formatCurrency(sale.proceeds)}</p>
                               </div>
                               <div>
                                 <p className="text-gray-500">Cost Base</p>
-                                <p className="font-medium text-gray-900">{formatCurrency(sale.cost_base)}</p>
+                                <p className="font-medium text-white">{formatCurrency(sale.cost_base)}</p>
                               </div>
                             </div>
 
                             <div className="mt-2 flex items-center gap-4 text-xs flex-wrap">
-                              <div className={`flex items-center gap-1 ${sale.gross_gain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                              <div className={`flex items-center gap-1 ${sale.gross_gain >= 0 ? 'text-green-400' : 'text-yellow-400'}`}>
                                 {sale.gross_gain >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 <span>Gross: {formatCurrency(sale.gross_gain)}</span>
                               </div>
@@ -1101,16 +1101,16 @@ export default function CGTPage() {
                                 </span>
                               )}
                               {sale.held_over_12_months && (
-                                <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">
+                                <span className="bg-green-500/100/20 text-green-400 px-1.5 py-0.5 rounded text-xs">
                                   12+ months
                                 </span>
                               )}
                               {(sale.sell_brokerage || sale.buy_brokerage) && (
-                                <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs">
+                                <span className="bg-orange-500/20 text-orange-700 px-1.5 py-0.5 rounded text-xs">
                                   Brokerage incl.
                                 </span>
                               )}
-                              <span className={`font-semibold ${sale.net_gain >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                              <span className={`font-semibold ${sale.net_gain >= 0 ? 'text-green-400' : 'text-yellow-400'}`}>
                                 Net: {formatCurrency(sale.net_gain)}
                               </span>
                             </div>
@@ -1129,7 +1129,7 @@ export default function CGTPage() {
             <p className="text-sm text-gray-400 mb-4">Record a sale to start tracking CGT</p>
             <button
               onClick={() => setShowAddSale(true)}
-              className="text-sm px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              className="text-sm px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-600"
             >
               Record Sale
             </button>
@@ -1141,28 +1141,28 @@ export default function CGTPage() {
       {showAddSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowAddSale(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Record Sale</h2>
-              <button onClick={() => setShowAddSale(false)} className="p-1 text-gray-400 hover:text-gray-600">
+          <div className="relative bg-[#1c1c28] rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-800">
+              <h2 className="text-lg font-semibold text-white">Record Sale</h2>
+              <button onClick={() => setShowAddSale(false)} className="p-1 text-gray-400 hover:text-gray-400">
                 ✕
               </button>
             </div>
 
             <div className="p-4 space-y-4">
               {error && (
-                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Stock</label>
                 <select
                   value={selectedHolding}
                   onChange={(e) => setSelectedHolding(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Select a holding...</option>
                   {holdings
@@ -1179,14 +1179,14 @@ export default function CGTPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Units to Sell (FIFO)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Units to Sell (FIFO)</label>
                 <input
                   type="number"
                   value={saleUnits}
                   onChange={(e) => setSaleUnits(e.target.value)}
                   placeholder="100"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Lots will be selected in FIFO order (oldest first)
@@ -1194,17 +1194,17 @@ export default function CGTPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sale Date</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Sale Date</label>
                 <input
                   type="date"
                   value={saleDate}
                   onChange={(e) => setSaleDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Sale Price per Unit ({selectedHoldingData?.currency || 'USD'})
                 </label>
                 <input
@@ -1213,13 +1213,13 @@ export default function CGTPage() {
                   onChange={(e) => setSalePrice(e.target.value)}
                   placeholder="150.00"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {selectedHoldingData?.currency === 'USD' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Exchange Rate (AUD per USD)
                   </label>
                   <input
@@ -1228,7 +1228,7 @@ export default function CGTPage() {
                     onChange={(e) => setExchangeRate(e.target.value)}
                     placeholder="1.55"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Use RBA exchange rate on sale date for ATO compliance
@@ -1237,8 +1237,8 @@ export default function CGTPage() {
               )}
 
               {/* Brokerage Section */}
-              <div className="border-t border-gray-200 pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Brokerage Fees</label>
+              <div className="border-t border-gray-800 pt-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Brokerage Fees</label>
                 
                 <div className="space-y-3">
                   <div>
@@ -1246,7 +1246,7 @@ export default function CGTPage() {
                     <select
                       value={broker}
                       onChange={(e) => setBroker(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="stake">Stake ($3 flat)</option>
                       <option value="commsec">CommSec (tiered: $5-0.12%)</option>
@@ -1266,7 +1266,7 @@ export default function CGTPage() {
                           onChange={(e) => setCustomSellBrokerage(e.target.value)}
                           placeholder="0.00"
                           step="0.01"
-                          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
                     </div>
@@ -1284,7 +1284,7 @@ export default function CGTPage() {
                         onChange={(e) => setBuyBrokerageAdjustment(e.target.value)}
                         placeholder="0.00"
                         step="0.01"
-                        className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1305,7 +1305,7 @@ export default function CGTPage() {
                         onChange={(e) => setRegulatoryFees(e.target.value)}
                         placeholder="0.00"
                         step="0.01"
-                        className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1315,7 +1315,7 @@ export default function CGTPage() {
 
                   {/* Brokerage Preview */}
                   {previewUnits > 0 && previewPrice > 0 && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs">
+                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-xs">
                       <p className="font-medium text-orange-800 mb-1">Fees Preview</p>
                       <div className="space-y-1 text-orange-700">
                         <div className="flex justify-between">
@@ -1347,7 +1347,7 @@ export default function CGTPage() {
               <button
                 onClick={handleAddSale}
                 disabled={submitting}
-                className="w-full py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
