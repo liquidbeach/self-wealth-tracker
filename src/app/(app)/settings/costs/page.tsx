@@ -334,7 +334,7 @@ export default function OperatingCostsPage() {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] text-white border border-gray-800 rounded-lg text-sm"
           >
             {monthOptions().map(opt => (
               <option key={opt.key} value={opt.key}>{opt.label}</option>
@@ -358,7 +358,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.supabase}
                   onChange={(e) => setCosts(prev => ({ ...prev, supabase: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Database & Auth</p>
@@ -372,7 +372,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.vercel}
                   onChange={(e) => setCosts(prev => ({ ...prev, vercel: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Hosting & CDN</p>
@@ -386,7 +386,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.api_services}
                   onChange={(e) => setCosts(prev => ({ ...prev, api_services: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Stock APIs, FX, etc.</p>
@@ -410,7 +410,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.claude_subscription}
                   onChange={(e) => setCosts(prev => ({ ...prev, claude_subscription: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">AI Research Assistant</p>
@@ -424,7 +424,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.other_ai_tools}
                   onChange={(e) => setCosts(prev => ({ ...prev, other_ai_tools: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">ChatGPT, Perplexity, etc.</p>
@@ -438,7 +438,7 @@ export default function OperatingCostsPage() {
                   step="0.01"
                   value={costs.other_costs}
                   onChange={(e) => setCosts(prev => ({ ...prev, other_costs: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-700 rounded-lg text-sm"
+                  className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm"
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Miscellaneous</p>
@@ -461,7 +461,7 @@ export default function OperatingCostsPage() {
             disabled={saving}
             className={`px-6 py-2.5 text-sm font-medium rounded-lg flex items-center gap-2 ${
               saved 
-                ? 'bg-green-500/100/20 text-green-400' 
+                ? 'bg-green-500/100/100/20 text-green-400' 
                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
             } disabled:opacity-50`}
           >
@@ -506,7 +506,7 @@ export default function OperatingCostsPage() {
                       <p className="font-mono font-bold text-white">{fmt(cost.total_monthly || 0)}</p>
                       <button
                         onClick={() => deleteCost(cost.month)}
-                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/100/10 rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/100/100/100/10 rounded"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

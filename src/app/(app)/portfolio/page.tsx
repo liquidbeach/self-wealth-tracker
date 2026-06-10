@@ -256,29 +256,29 @@ export default function PortfolioPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Portfolio</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Portfolio</h1>
           <p className="text-sm text-gray-500">Track your holdings and performance</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-              <MoreHorizontal className="w-4 h-4 text-gray-600" />
+            <button onClick={() => setShowMenu(!showMenu)} className="p-2 border border-gray-800 rounded-lg hover:bg-white/5">
+              <MoreHorizontal className="w-4 h-4 text-gray-400" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <button onClick={() => { setShowMenu(false); setShowCashBalance(true) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                <div className="absolute right-0 mt-2 w-44 bg-[#1c1c28] rounded-lg shadow-lg border border-gray-800 py-1 z-20">
+                  <button onClick={() => { setShowMenu(false); setShowCashBalance(true) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5">
                     <Wallet className="w-4 h-4" /> Manage Cash
                   </button>
-                  <button onClick={() => { setShowMenu(false); setShowImport(true) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  <button onClick={() => { setShowMenu(false); setShowImport(true) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5">
                     <Upload className="w-4 h-4" /> Import Data
                   </button>
                 </div>
               </>
             )}
           </div>
-          <button onClick={() => setShowAddHolding(true)} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">
+          <button onClick={() => setShowAddHolding(true)} className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-600">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Add Holding</span>
             <span className="sm:hidden">Add</span>
@@ -291,7 +291,7 @@ export default function PortfolioPage() {
         <div className="bg-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
+              {summary.totalPnL >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
               <span className="text-sm font-medium text-white">Portfolio Summary</span>
             </div>
             <div className="flex items-center gap-2">
@@ -318,13 +318,13 @@ export default function PortfolioPage() {
             </div>
             <div>
               <p className="text-xs text-gray-400">Unrealized P&L <span className="text-cyan-400">(AUD)</span></p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {summary.totalPnL >= 0 ? '+' : ''}${Math.abs(summary.totalPnL).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-400">Return</p>
-              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${summary.totalPnLPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {summary.totalPnLPercent >= 0 ? '+' : ''}{summary.totalPnLPercent.toFixed(1)}%
               </p>
             </div>
@@ -341,26 +341,26 @@ export default function PortfolioPage() {
 
       {/* Cash Balances - Simplified Labels */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">AUD</p>
-          <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('AUD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-base sm:text-lg font-bold text-white">${getCashByCurrency('AUD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">USD</p>
-          <p className="text-base sm:text-lg font-bold text-gray-900">${getCashByCurrency('USD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-base sm:text-lg font-bold text-white">${getCashByCurrency('USD').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
+        <div className="bg-[#1c1c28] border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-emerald-300" onClick={() => setShowCashBalance(true)}>
           <p className="text-xs text-gray-500 mb-0.5">INR</p>
-          <p className="text-base sm:text-lg font-bold text-gray-900">₹{getCashByCurrency('INR').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-base sm:text-lg font-bold text-white">₹{getCashByCurrency('INR').toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         </div>
       </div>
 
       {/* Holdings */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Holdings</h3>
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-800/50">
+          <h3 className="font-semibold text-white">Holdings</h3>
           {holdings.length > 0 && (
-            <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+            <button onClick={handleRefreshPrices} disabled={refreshingPrices} className="text-xs text-green-400 hover:text-green-400 flex items-center gap-1">
               <RefreshCw className={`w-3 h-3 ${refreshingPrices ? 'animate-spin' : ''}`} />
               {refreshingPrices ? 'Refreshing...' : 'Refresh'}
             </button>
@@ -373,17 +373,17 @@ export default function PortfolioPage() {
             <p className="text-sm">Loading...</p>
           </div>
         ) : holdings.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-800">
             {Object.entries(holdingsByCurrency).map(([currency, currencyHoldings]) => (
               <div key={currency}>
-                <div className="px-3 sm:px-4 py-2 bg-gray-50">
+                <div className="px-3 sm:px-4 py-2 bg-white/5">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     {currency === 'AUD' ? '🇦🇺 AUD' : currency === 'USD' ? '🇺🇸 USD' : '🇮🇳 INR'}
                   </span>
                 </div>
                 
                 {/* Mobile Card View */}
-                <div className="sm:hidden divide-y divide-gray-100">
+                <div className="sm:hidden divide-y divide-gray-800">
                   {currencyHoldings.map((holding) => {
                     const stats = calculateHoldingStats(holding)
                     const lots = holding.lots || []
@@ -395,24 +395,24 @@ export default function PortfolioPage() {
                           <div className="flex items-center gap-2">
                             {lots.length > 0 && (isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />)}
                             <div>
-                              <p className="font-medium text-gray-900 text-sm">{holding.ticker}</p>
+                              <p className="font-medium text-white text-sm">{holding.ticker}</p>
                               <p className="text-xs text-gray-500 truncate max-w-[120px]">{holding.name}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-gray-900 text-sm">{formatCurrency(stats.currentValue, currency)}</p>
-                            <p className={`text-xs font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <p className="font-medium text-white text-sm">{formatCurrency(stats.currentValue, currency)}</p>
+                            <p className={`text-xs font-semibold ${stats.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                               {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                             </p>
                           </div>
                         </div>
                         
                         {isExpanded && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="mt-3 pt-3 border-t border-gray-800/50">
                             <div className="grid grid-cols-3 gap-2 text-xs mb-3">
-                              <div><p className="text-gray-500">Units</p><p className="font-medium text-gray-900">{stats.totalUnits.toLocaleString()}</p></div>
-                              <div><p className="text-gray-500">Avg Cost</p><p className="font-medium text-gray-900">{formatCurrency(stats.avgPrice, currency)}</p></div>
-                              <div><p className="text-gray-500">Current</p><p className="font-medium text-gray-900">{formatCurrency(stats.currentPrice, currency)}</p></div>
+                              <div><p className="text-gray-500">Units</p><p className="font-medium text-white">{stats.totalUnits.toLocaleString()}</p></div>
+                              <div><p className="text-gray-500">Avg Cost</p><p className="font-medium text-white">{formatCurrency(stats.avgPrice, currency)}</p></div>
+                              <div><p className="text-gray-500">Current</p><p className="font-medium text-white">{formatCurrency(stats.currentPrice, currency)}</p></div>
                             </div>
                             
                             {/* Purchase Lots - Mobile */}
@@ -426,17 +426,17 @@ export default function PortfolioPage() {
                                     const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
                                     
                                     return (
-                                      <div key={lot.id} className="flex items-center py-1.5 border-b border-gray-100 last:border-0">
+                                      <div key={lot.id} className="flex items-center py-1.5 border-b border-gray-800/50 last:border-0">
                                         <div className="flex-1">
                                           <div className="flex items-center gap-2">
-                                            <span className="text-gray-700">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
-                                            <span className={`font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
+                                            <span className="text-gray-300">{Number(lot.units).toLocaleString()} @ {formatCurrency(Number(lot.purchase_price), currency)}</span>
+                                            <span className={`font-semibold ${lotGainPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>{lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%</span>
                                           </div>
                                           <span className="text-gray-400">{new Date(lot.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                          <button onClick={(e) => { e.stopPropagation(); handleEditLot(lot, holding) }} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                                          <button onClick={(e) => { e.stopPropagation(); handleDeleteLot(lot.id) }} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                          <button onClick={(e) => { e.stopPropagation(); handleEditLot(lot, holding) }} className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-500/100/10 rounded" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+                                          <button onClick={(e) => { e.stopPropagation(); handleDeleteLot(lot.id) }} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/100/10 rounded" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                                         </div>
                                       </div>
                                     )
@@ -446,8 +446,8 @@ export default function PortfolioPage() {
                             )}
                             
                             <div className="flex gap-2">
-                              <button onClick={(e) => { e.stopPropagation(); handleAddLot(holding) }} className="flex-1 text-xs py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50">+ Add Lot</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleEditHolding(holding) }} className="flex-1 text-xs py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50">Edit</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleAddLot(holding) }} className="flex-1 text-xs py-1.5 border border-gray-800 rounded text-gray-300 hover:bg-white/5">+ Add Lot</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleEditHolding(holding) }} className="flex-1 text-xs py-1.5 border border-gray-800 rounded text-gray-300 hover:bg-white/5">Edit</button>
                             </div>
                           </div>
                         )}
@@ -460,7 +460,7 @@ export default function PortfolioPage() {
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-100 text-xs text-gray-500">
+                      <tr className="border-b border-gray-800/50 text-xs text-gray-500">
                         <th className="text-left py-2 px-4 font-medium w-8"></th>
                         <th className="text-left py-2 px-4 font-medium">Stock</th>
                         <th className="text-right py-2 px-4 font-medium">Units</th>
@@ -490,28 +490,28 @@ export default function PortfolioPage() {
 
                         return (
                           <>
-                            <tr key={holding.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => lots.length > 0 && toggleExpanded(holding.id)}>
+                            <tr key={holding.id} className="hover:bg-white/5 cursor-pointer" onClick={() => lots.length > 0 && toggleExpanded(holding.id)}>
                               <td className="py-2.5 px-4">
                                 {lots.length > 0 && (isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />)}
                               </td>
                               <td className="py-2.5 px-4">
-                                <p className="font-medium text-gray-900">{holding.ticker}</p>
+                                <p className="font-medium text-white">{holding.ticker}</p>
                                 <p className="text-xs text-gray-500 truncate max-w-[150px]">{holding.name}</p>
                               </td>
-                              <td className="py-2.5 px-4 text-right text-gray-700">{stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                              <td className="py-2.5 px-4 text-right text-gray-700">{formatCurrency(stats.avgPrice, currency)}</td>
+                              <td className="py-2.5 px-4 text-right text-gray-300">{stats.totalUnits.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-4 text-right text-gray-300">{formatCurrency(stats.avgPrice, currency)}</td>
                               <td className="py-2.5 px-4 text-right text-gray-500 text-xs">{dateDisplay}</td>
                               <td className="py-2.5 px-4 text-right">
-                                {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-gray-900">{formatCurrency(stats.currentPrice, currency)}</span>}
+                                {holding.price_error ? <span className="text-gray-400">—</span> : <span className="text-white">{formatCurrency(stats.currentPrice, currency)}</span>}
                               </td>
-                              <td className="py-2.5 px-4 text-right font-medium text-gray-900">{formatCurrency(stats.currentValue, currency)}</td>
-                              <td className={`py-2.5 px-4 text-right font-semibold ${stats.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                              <td className="py-2.5 px-4 text-right font-medium text-white">{formatCurrency(stats.currentValue, currency)}</td>
+                              <td className={`py-2.5 px-4 text-right font-semibold ${stats.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.gainLoss >= 0 ? '+' : ''}{stats.gainLossPct.toFixed(1)}%
                               </td>
                               <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
-                                  <button onClick={() => handleAddLot(holding)} className="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Add lot"><Plus className="w-4 h-4" /></button>
-                                  <button onClick={() => handleEditHolding(holding)} className="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                                  <button onClick={() => handleAddLot(holding)} className="p-1 text-gray-400 hover:text-green-400 hover:bg-green-500/100/10 rounded" title="Add lot"><Plus className="w-4 h-4" /></button>
+                                  <button onClick={() => handleEditHolding(holding)} className="p-1 text-gray-400 hover:text-green-400 hover:bg-green-500/100/10 rounded" title="Edit"><Edit2 className="w-4 h-4" /></button>
                                 </div>
                               </td>
                             </tr>
@@ -522,7 +522,7 @@ export default function PortfolioPage() {
                               const lotGainPct = lotCost > 0 ? ((lotValue - lotCost) / lotCost) * 100 : 0
                               
                               return (
-                                <tr key={lot.id} className="bg-gray-50/50 text-xs">
+                                <tr key={lot.id} className="bg-white/5/50 text-xs">
                                   <td></td>
                                   <td className="py-1.5 px-4 text-gray-400">Lot</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{Number(lot.units).toLocaleString()}</td>
@@ -532,13 +532,13 @@ export default function PortfolioPage() {
                                   </td>
                                   <td className="py-1.5 px-4 text-right text-gray-300">—</td>
                                   <td className="py-1.5 px-4 text-right text-gray-500">{formatCurrency(lotValue, currency)}</td>
-                                  <td className={`py-1.5 px-4 text-right font-semibold ${lotGainPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                  <td className={`py-1.5 px-4 text-right font-semibold ${lotGainPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {lotGainPct >= 0 ? '+' : ''}{lotGainPct.toFixed(1)}%
                                   </td>
                                   <td className="py-1.5 px-4 text-right">
                                     <div className="flex items-center justify-end gap-1">
-                                      <button onClick={() => handleEditLot(lot, holding)} className="p-1 text-gray-400 hover:text-emerald-600" title="Edit lot"><Edit2 className="w-3 h-3" /></button>
-                                      <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-600" title="Delete lot"><Trash2 className="w-3 h-3" /></button>
+                                      <button onClick={() => handleEditLot(lot, holding)} className="p-1 text-gray-400 hover:text-green-400" title="Edit lot"><Edit2 className="w-3 h-3" /></button>
+                                      <button onClick={() => handleDeleteLot(lot.id)} className="p-1 text-gray-400 hover:text-red-400" title="Delete lot"><Trash2 className="w-3 h-3" /></button>
                                     </div>
                                   </td>
                                 </tr>
@@ -559,8 +559,8 @@ export default function PortfolioPage() {
             <p className="text-gray-500 mb-1">No holdings yet</p>
             <p className="text-sm text-gray-400 mb-4">Add your first holding to get started</p>
             <div className="flex justify-center gap-2">
-              <button onClick={() => setShowImport(true)} className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Import Data</button>
-              <button onClick={() => setShowAddHolding(true)} className="text-sm px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Add Holding</button>
+              <button onClick={() => setShowImport(true)} className="text-sm px-3 py-1.5 border border-gray-800 rounded-lg text-gray-400 hover:bg-white/5">Import Data</button>
+              <button onClick={() => setShowAddHolding(true)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-600">Add Holding</button>
             </div>
           </div>
         )}

@@ -305,9 +305,9 @@ export default function ActivityPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   filterType === type
                     ? type === 'BUY' 
-                      ? 'bg-green-500/100/100 text-white'
+                      ? 'bg-green-500/100/100/100 text-white'
                       : type === 'SELL'
-                        ? 'bg-red-500/100 text-white'
+                        ? 'bg-red-500/100/100 text-white'
                         : 'bg-white/15 text-white shadow-sm'
                     : 'text-gray-400 hover:text-white'
                 }`}
@@ -321,7 +321,7 @@ export default function ActivityPage() {
           <select
             value={filterFY}
             onChange={(e) => setFilterFY(e.target.value)}
-            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] text-white border border-gray-800 rounded-lg text-sm"
           >
             <option value="">All Time</option>
             <option value="2025-2026">FY 2025-26</option>
@@ -337,7 +337,7 @@ export default function ActivityPage() {
               placeholder="Filter by ticker..."
               value={filterTicker}
               onChange={(e) => setFilterTicker(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-800 rounded-lg text-sm"
+              className="w-full pl-9 pr-3 py-2 bg-white/5 text-white border border-gray-800 rounded-lg text-sm"
             />
           </div>
 
@@ -419,12 +419,12 @@ export default function ActivityPage() {
                         {/* Transaction counts */}
                         <div className="flex items-center gap-2">
                           {buys.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-green-500/100/20 text-green-400">
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-green-500/100/100/20 text-green-400">
                               {buys.length} BUY{buys.length !== 1 ? 's' : ''}
                             </span>
                           )}
                           {sells.length > 0 && (
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-red-500/20 text-red-400">
+                            <span className="text-xs font-medium px-2 py-1 rounded bg-red-500/100/20 text-red-400">
                               {sells.length} SELL{sells.length !== 1 ? 's' : ''}
                             </span>
                           )}
@@ -461,7 +461,7 @@ export default function ActivityPage() {
                               {/* Left: Type badge */}
                               <div className="flex items-center gap-3">
                                 <div className={`p-1.5 rounded-full ${
-                                  tx.type === 'BUY' ? 'bg-green-500/100/20' : 'bg-red-500/20'
+                                  tx.type === 'BUY' ? 'bg-green-500/100/100/20' : 'bg-red-500/100/20'
                                 }`}>
                                   {tx.type === 'BUY' ? (
                                     <ArrowDownCircle className="w-4 h-4 text-green-400" />
@@ -474,8 +474,8 @@ export default function ActivityPage() {
                                     tx.type === 'BUY' 
                                       ? tx.wasSold 
                                         ? 'bg-gray-700 text-gray-400' 
-                                        : 'bg-green-500/100/20 text-green-400' 
-                                      : 'bg-red-500/20 text-red-400'
+                                        : 'bg-green-500/100/100/20 text-green-400' 
+                                      : 'bg-red-500/100/20 text-red-400'
                                   }`}>
                                     {tx.type}{tx.wasSold ? ' (Sold)' : ''}
                                   </span>

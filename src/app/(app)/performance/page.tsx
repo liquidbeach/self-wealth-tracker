@@ -26,14 +26,14 @@ import {
 
 // Sector definitions - consistent across Dashboard & Performance Report
 const SECTORS: Record<string, { name: string; color: string; textColor: string; barColor: string }> = {
-  'AI Infrastructure': { name: 'AI Infrastructure', color: 'bg-purple-500/100', textColor: 'text-purple-400', barColor: 'from-purple-500 to-violet-500' },
-  'ETF': { name: 'ETFs (Base Returns)', color: 'bg-blue-500/100', textColor: 'text-blue-400', barColor: 'from-blue-500 to-cyan-500' },
-  'Mining': { name: 'Mining', color: 'bg-orange-500/100', textColor: 'text-yellow-400', barColor: 'from-orange-500 to-amber-500' },
-  'Physical Infrastructure': { name: 'Physical Infrastructure', color: 'bg-green-500/100/100', textColor: 'text-green-400', barColor: 'from-emerald-500 to-teal-500' },
-  'Technology': { name: 'Technology', color: 'bg-cyan-500/100', textColor: 'text-cyan-400', barColor: 'from-cyan-500 to-blue-500' },
-  'Financials': { name: 'Financials', color: 'bg-green-500/100', textColor: 'text-green-400', barColor: 'from-green-500 to-emerald-500' },
-  'Materials': { name: 'Materials', color: 'bg-yellow-500/100', textColor: 'text-yellow-400', barColor: 'from-yellow-500 to-orange-500' },
-  'Diversified': { name: 'Diversified', color: 'bg-indigo-500/100', textColor: 'text-indigo-400', barColor: 'from-indigo-500 to-purple-500' },
+  'AI Infrastructure': { name: 'AI Infrastructure', color: 'bg-purple-500/100/100', textColor: 'text-purple-400', barColor: 'from-purple-500 to-violet-500' },
+  'ETF': { name: 'ETFs (Base Returns)', color: 'bg-blue-500/100/100', textColor: 'text-blue-400', barColor: 'from-blue-500 to-cyan-500' },
+  'Mining': { name: 'Mining', color: 'bg-orange-500/100/100', textColor: 'text-yellow-400', barColor: 'from-orange-500 to-amber-500' },
+  'Physical Infrastructure': { name: 'Physical Infrastructure', color: 'bg-green-500/100/100/100', textColor: 'text-green-400', barColor: 'from-emerald-500 to-teal-500' },
+  'Technology': { name: 'Technology', color: 'bg-cyan-500/100/100', textColor: 'text-cyan-400', barColor: 'from-cyan-500 to-blue-500' },
+  'Financials': { name: 'Financials', color: 'bg-green-500/100/100', textColor: 'text-green-400', barColor: 'from-green-500 to-emerald-500' },
+  'Materials': { name: 'Materials', color: 'bg-yellow-500/100/100', textColor: 'text-yellow-400', barColor: 'from-yellow-500 to-orange-500' },
+  'Diversified': { name: 'Diversified', color: 'bg-indigo-500/100/100', textColor: 'text-indigo-400', barColor: 'from-indigo-500 to-purple-500' },
   'Other': { name: 'Other', color: 'bg-slate-400', textColor: 'text-gray-400', barColor: 'from-slate-400 to-gray-500' },
 }
 
@@ -436,7 +436,7 @@ export default function PerformanceReportPage() {
           <select
             value={selectedFY}
             onChange={(e) => setSelectedFY(e.target.value)}
-            className="px-3 py-2 bg-[#1c1c28] border border-gray-800 rounded-lg text-sm"
+            className="px-3 py-2 bg-[#1c1c28] text-white border border-gray-800 rounded-lg text-sm"
           >
             <option value="2025-2026">FY 2025-26</option>
             <option value="2024-2025">FY 2024-25</option>
@@ -661,7 +661,7 @@ export default function PerformanceReportPage() {
             <select
               value={selectedHoldingId}
               onChange={(e) => setSelectedHoldingId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="">Choose holding...</option>
               {holdings.map(h => (
@@ -677,7 +677,7 @@ export default function PerformanceReportPage() {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               disabled={!selectedHoldingId}
             >
               <option value="">Choose sector...</option>
