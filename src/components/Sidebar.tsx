@@ -40,6 +40,7 @@ const navigation = [
   // Analysis & Tools
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'AI Universe', href: '/universe', icon: Globe },
+  { name: 'Signal Monitor', href: '/signal-monitor', icon: Radar },
   { name: 'Search', href: '/search', icon: Search },
   { name: 'Momentum', href: '/momentum', icon: TrendingUp },
   
@@ -55,7 +56,6 @@ const navigation = [
   
   // Settings (one entry - costs is a sub-page)
   { name: 'Settings', href: '/settings/costs', icon: Settings },
-  { name: 'Signal Monitor', href: '/signal-monitor', icon: Radar },
 ]
 
 export default function Sidebar() {
