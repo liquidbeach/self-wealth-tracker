@@ -23,7 +23,8 @@ import {
   Calculator,
   Globe,
   Target,
-  Activity,  
+  Activity,
+  Radar,
 } from 'lucide-react'
 
 import { useState, useEffect } from 'react'
@@ -54,6 +55,7 @@ const navigation = [
   
   // Settings (one entry - costs is a sub-page)
   { name: 'Settings', href: '/settings/costs', icon: Settings },
+  { name: 'Signal Monitor', href: '/signal-monitor', icon: Radar },
 ]
 
 export default function Sidebar() {
