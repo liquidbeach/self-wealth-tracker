@@ -157,6 +157,7 @@ export default function SignalMonitorPage() {
   const [showAddTicker, setShowAddTicker] = useState(false)
   const [addTickerInput, setAddTickerInput] = useState('')
   const [addingTicker, setAddingTicker] = useState(false)
+  const [addTickerError, setAddTickerError] = useState<string | null>(null)
 
   const runScan = useCallback(async () => {
     setLoading(true)
@@ -236,25 +237,30 @@ export default function SignalMonitorPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Add a manual ticker
-  const addTicker = useCallback(async (ticker: string) => {
-    const sym = ticker.trim().toUpperCase()
+  async function addTicker() {
+    const sym = addTickerInput.trim().toUpperCase()
     if (!sym) return
 
     // Check if already in the list
     if (signals.some(s => s.ticker === sym)) {
-      setError(`${sym} is already in the list`)
-      setTimeout(() => setError(null), 3000)
+      setAddTickerError(`${sym} is already in the list`)
       return
     }
 
     setAddingTicker(true)
-    setError(null)
+    setAddTickerError(null)
 
     try {
       const res = await fetch(`/api/pullback-quote?symbol=${sym}`)
-      if (!res.ok) throw new Error(`Could not find ${sym}`)
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Could not find ${sym}`)
+      }
+
+      if (!data.currentPrice || data.currentPrice === 0) {
+        throw new Error(`No price data found for ${sym}`)
+      }
 
       const pullbackFromHigh = data.weekHigh52 > 0
         ? ((data.weekHigh52 - data.currentPrice) / data.weekHigh52) * 100
@@ -287,12 +293,13 @@ export default function SignalMonitorPage() {
       setSignals(prev => [...prev, newSignal])
       setAddTickerInput('')
       setShowAddTicker(false)
+      setAddTickerError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to add ${sym}`)
+      setAddTickerError(err instanceof Error ? err.message : `Failed to add ${sym}`)
     } finally {
       setAddingTicker(false)
     }
-  }, [signals, deployment])
+  }
 
   // Remove a manually added ticker
   const removeTicker = (ticker: string) => {
@@ -358,32 +365,37 @@ export default function SignalMonitorPage() {
           
           {/* Add Ticker */}
           {showAddTicker ? (
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  type="text"
-                  value={addTickerInput}
-                  onChange={(e) => setAddTickerInput(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && addTickerInput.trim()) addTicker(addTickerInput) }}
-                  placeholder="e.g. AAPL"
-                  autoFocus
-                  className="w-32 pl-9 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm font-mono placeholder:text-gray-600 focus:outline-none focus:border-blue-500"
-                />
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    value={addTickerInput}
+                    onChange={(e) => { setAddTickerInput(e.target.value.toUpperCase()); setAddTickerError(null) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && addTickerInput.trim()) addTicker() }}
+                    placeholder="e.g. AAPL"
+                    autoFocus
+                    className="w-32 pl-9 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm font-mono placeholder:text-gray-600 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={addTicker}
+                  disabled={addingTicker || !addTickerInput.trim()}
+                  className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                >
+                  {addingTicker ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+                </button>
+                <button
+                  onClick={() => { setShowAddTicker(false); setAddTickerInput(''); setAddTickerError(null) }}
+                  className="p-2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => addTicker(addTickerInput)}
-                disabled={addingTicker || !addTickerInput.trim()}
-                className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors"
-              >
-                {addingTicker ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
-              </button>
-              <button
-                onClick={() => { setShowAddTicker(false); setAddTickerInput('') }}
-                className="p-2 text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              {addTickerError && (
+                <span className="text-xs text-red-400">{addTickerError}</span>
+              )}
             </div>
           ) : (
             <button
