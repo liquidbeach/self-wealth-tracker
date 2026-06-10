@@ -158,6 +158,12 @@ select.input option {
   color: #ffffff;
 }
 
+/* Universal select option dark mode — catches inline-styled selects too */
+option {
+  background-color: #1c1c28;
+  color: #ffffff;
+}
+
 /* Tables */
 table {
   @apply w-full;

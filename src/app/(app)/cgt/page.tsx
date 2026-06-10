@@ -877,7 +877,7 @@ export default function CGTPage() {
                     value={offsetBalance}
                     onChange={(e) => setOffsetBalance(e.target.value)}
                     placeholder="50000"
-                    className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Enter your current offset/savings balance</p>
@@ -885,18 +885,18 @@ export default function CGTPage() {
 
               {/* CGT Calculation Breakdown */}
               <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
-                <p className="text-xs font-medium text-orange-800 mb-2">CGT Calculation (FY {viewingFY})</p>
+                <p className="text-xs font-medium text-orange-400 mb-2">CGT Calculation (FY {viewingFY})</p>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-orange-700">Net Taxable Gain:</span>
-                    <span className="font-medium text-orange-800">{formatCurrency(netTaxableGain)}</span>
+                    <span className="text-orange-300">Net Taxable Gain:</span>
+                    <span className="font-medium text-orange-400">{formatCurrency(netTaxableGain)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-orange-700">× Tax Rate:</span>
-                    <span className="font-medium text-orange-800">{effectiveRate}%</span>
+                    <span className="text-orange-300">× Tax Rate:</span>
+                    <span className="font-medium text-orange-400">{effectiveRate}%</span>
                   </div>
-                  <div className="flex justify-between pt-1 border-t border-orange-300">
-                    <span className="font-medium text-orange-800">CGT Owed:</span>
+                  <div className="flex justify-between pt-1 border-t border-orange-500/30">
+                    <span className="font-medium text-orange-400">CGT Owed:</span>
                     <span className="font-bold text-yellow-400">{formatCurrency(cgtOwed)}</span>
                   </div>
                 </div>
@@ -969,7 +969,7 @@ export default function CGTPage() {
                 value={baseSalary}
                 onChange={(e) => setBaseSalary(e.target.value)}
                 placeholder="120000"
-                className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -1106,7 +1106,7 @@ export default function CGTPage() {
                                 </span>
                               )}
                               {(sale.sell_brokerage || sale.buy_brokerage) && (
-                                <span className="bg-orange-500/20 text-orange-700 px-1.5 py-0.5 rounded text-xs">
+                                <span className="bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded text-xs">
                                   Brokerage incl.
                                 </span>
                               )}
@@ -1162,7 +1162,7 @@ export default function CGTPage() {
                 <select
                   value={selectedHolding}
                   onChange={(e) => setSelectedHolding(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Select a holding...</option>
                   {holdings
@@ -1186,7 +1186,7 @@ export default function CGTPage() {
                   onChange={(e) => setSaleUnits(e.target.value)}
                   placeholder="100"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Lots will be selected in FIFO order (oldest first)
@@ -1199,7 +1199,7 @@ export default function CGTPage() {
                   type="date"
                   value={saleDate}
                   onChange={(e) => setSaleDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -1213,7 +1213,7 @@ export default function CGTPage() {
                   onChange={(e) => setSalePrice(e.target.value)}
                   placeholder="150.00"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -1228,7 +1228,7 @@ export default function CGTPage() {
                     onChange={(e) => setExchangeRate(e.target.value)}
                     placeholder="1.55"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Use RBA exchange rate on sale date for ATO compliance
@@ -1246,7 +1246,7 @@ export default function CGTPage() {
                     <select
                       value={broker}
                       onChange={(e) => setBroker(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="stake">Stake ($3 flat)</option>
                       <option value="commsec">CommSec (tiered: $5-0.12%)</option>
@@ -1266,7 +1266,7 @@ export default function CGTPage() {
                           onChange={(e) => setCustomSellBrokerage(e.target.value)}
                           placeholder="0.00"
                           step="0.01"
-                          className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
                     </div>
@@ -1284,7 +1284,7 @@ export default function CGTPage() {
                         onChange={(e) => setBuyBrokerageAdjustment(e.target.value)}
                         placeholder="0.00"
                         step="0.01"
-                        className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1305,7 +1305,7 @@ export default function CGTPage() {
                         onChange={(e) => setRegulatoryFees(e.target.value)}
                         placeholder="0.00"
                         step="0.01"
-                        className="w-full pl-7 pr-3 py-2 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1316,8 +1316,8 @@ export default function CGTPage() {
                   {/* Brokerage Preview */}
                   {previewUnits > 0 && previewPrice > 0 && (
                     <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-xs">
-                      <p className="font-medium text-orange-800 mb-1">Fees Preview</p>
-                      <div className="space-y-1 text-orange-700">
+                      <p className="font-medium text-orange-400 mb-1">Fees Preview</p>
+                      <div className="space-y-1 text-orange-300">
                         <div className="flex justify-between">
                           <span>Sell Brokerage:</span>
                           <span>${previewSellBrokerage.toFixed(2)}</span>
@@ -1334,7 +1334,7 @@ export default function CGTPage() {
                             <span>${previewBuyBrokerageAdj.toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between font-medium border-t border-orange-300 pt-1">
+                        <div className="flex justify-between font-medium border-t border-orange-500/30 pt-1">
                           <span>Total Fees:</span>
                           <span>${(previewTotalSellFees + previewBuyBrokerageAdj).toFixed(2)}</span>
                         </div>
