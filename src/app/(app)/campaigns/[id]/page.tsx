@@ -152,11 +152,15 @@ function TierTable({
                       {pos.flag && (
                         <span className={`text-[7px] px-1 py-0.5 rounded font-medium ${FLAG_STYLES[pos.flag] || 'bg-white/10 text-gray-400'}`}>{pos.flag}</span>
                       )}
-                      {/* Edit/Remove on hover */}
-                      <span className="hidden group-hover:inline-flex items-center gap-0.5 ml-1">
-                        <button onClick={() => onEdit(pos)} className="p-0.5 text-gray-600 hover:text-blue-400"><Pencil className="w-2.5 h-2.5" /></button>
-                        <button onClick={() => onRemove(pos)} className="p-0.5 text-gray-600 hover:text-red-400"><Trash2 className="w-2.5 h-2.5" /></button>
-                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <button onClick={() => onEdit(pos)} className="flex items-center gap-0.5 text-[9px] text-gray-500 hover:text-blue-400 transition-colors" title="Edit position">
+                        <Pencil className="w-2.5 h-2.5" /> Edit
+                      </button>
+                      <span className="text-gray-700">·</span>
+                      <button onClick={() => onRemove(pos)} className="flex items-center gap-0.5 text-[9px] text-gray-500 hover:text-red-400 transition-colors" title="Remove">
+                        <Trash2 className="w-2.5 h-2.5" /> Remove
+                      </button>
                     </div>
                   </td>
                   <td className="px-1.5 py-2 text-[9px] text-gray-500">{pos.supply_chain_layer}</td>
