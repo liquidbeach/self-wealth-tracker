@@ -46,6 +46,7 @@ const navigation = [
   
   // Simulators
   { name: 'Trade Simulator', href: '/trade-simulator', icon: Target },
+  { name: 'Campaigns', href: '/campaigns', icon: Target },
   { name: 'CGT Simulator', href: '/cgt-simulator', icon: Calculator },
   
   // Research & Risk
