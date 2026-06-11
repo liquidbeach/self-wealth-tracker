@@ -340,7 +340,7 @@ export default function CampaignDetailPage() {
     newEnd.setFullYear(newEnd.getFullYear() + 1)
 
     const { data: newCampaign } = await supabase.from('campaigns').insert({
-      name: campaign.name.replace(/\d{4}/g, (m) => String(Number(m) + 1)),
+      name: campaign.name + ' (Clone)',
       description: campaign.description, start_date: newStart.toISOString().split('T')[0],
       end_date: newEnd.toISOString().split('T')[0], total_budget: campaign.total_budget,
       status: 'planning', cgt_rate: campaign.cgt_rate, cgt_discount_rate: campaign.cgt_discount_rate,
@@ -356,8 +356,21 @@ export default function CampaignDetailPage() {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-blue-400 animate-spin" /></div>
-  if (!campaign) return <div className="text-center py-20"><p className="text-gray-400">Campaign not found</p></div>
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!campaign) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-gray-400">Campaign not found</p>
+      </div>
+    )
+  }
 
   const cgtRate = campaign.cgt_rate || 0.37
   const cgtDiscount = campaign.cgt_discount_rate || 0.185
@@ -526,7 +539,7 @@ export default function CampaignDetailPage() {
       )}
 
       <p className="text-[10px] text-gray-600 text-center">
-        Campaign Model • CGT <12m: {(cgtRate * 100).toFixed(0)}% • CGT >12m: {(cgtDiscount * 100).toFixed(1)}% • Not financial advice
+        Campaign Model • CGT {'<'}12m: {(cgtRate * 100).toFixed(0)}% • CGT {'>'}12m: {(cgtDiscount * 100).toFixed(1)}% • Not financial advice
       </p>
     </div>
   )
