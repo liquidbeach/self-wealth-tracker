@@ -510,7 +510,10 @@ export default function CampaignDetailPage() {
       </div>
 
       <p className="text-[10px] text-gray-600">
-        {positions.length} positions × {fmt(positions[0]?.planned_deploy || 12500)} per tranche • {scenario === 'bull' ? 'Bull' : 'Base'} case • CGT discount {(cgtDiscount * 100).toFixed(1)}% applied • {new Date(campaign.start_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })} → {new Date(campaign.end_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
+        {deployedPositions.length > 0
+          ? `${deployedPositions.length} deployed position${deployedPositions.length !== 1 ? 's' : ''} • ${fmt(summary.invested)} invested`
+          : 'No positions deployed yet'
+        } • {scenario === 'bull' ? 'Bull' : 'Base'} case • CGT discount {(cgtDiscount * 100).toFixed(1)}% applied • {new Date(campaign.start_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })} → {new Date(campaign.end_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
       </p>
 
       {/* ════ SUMMARY BAR (from deployed only) ════ */}
