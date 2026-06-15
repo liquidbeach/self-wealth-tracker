@@ -137,7 +137,6 @@ export default function OperatingCostsPage() {
         other_ai_tools: 0,
         other_costs: otherTotal,
         other_notes: JSON.stringify(lineItems),
-        total_monthly: grandTotal,
       }
 
       console.log('Cost data:', costData)
