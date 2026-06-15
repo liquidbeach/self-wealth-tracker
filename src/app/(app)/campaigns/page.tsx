@@ -17,6 +17,8 @@ import {
   Clock,
   Zap,
   X,
+  Pencil,
+  Save,
 } from 'lucide-react'
 
 interface Campaign {
@@ -50,6 +52,11 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
+  
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editBudget, setEditBudget] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   // Create form state
   const [newName, setNewName] = useState('')
@@ -118,6 +125,33 @@ export default function CampaignsPage() {
       router.push(`/campaigns/${data.id}`)
     }
     setCreating(false)
+  }
+
+  const openEditBudget = (e: React.MouseEvent, campaign: Campaign) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditingId(campaign.id)
+    setEditBudget(campaign.total_budget?.toString() || '')
+  }
+
+  const saveEditBudget = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!editingId) return
+    setEditSaving(true)
+    const supabase = createClient()
+    await supabase.from('campaigns').update({
+      total_budget: parseFloat(editBudget) || null,
+    }).eq('id', editingId)
+    setEditingId(null)
+    setEditSaving(false)
+    fetchCampaigns()
+  }
+
+  const cancelEdit = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditingId(null)
   }
 
   return (
@@ -267,9 +301,28 @@ export default function CampaignsPage() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-600 mb-0.5">BUDGET</p>
-                    <p className="text-sm text-white font-mono font-medium">
-                      {campaign.total_budget ? fmt(campaign.total_budget) : '—'}
-                    </p>
+                    {editingId === campaign.id ? (
+                      <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+                        <input
+                          type="number"
+                          value={editBudget}
+                          onChange={(e) => setEditBudget(e.target.value)}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditBudget(e as any) } if (e.key === 'Escape') setEditingId(null) }}
+                          className="w-24 px-2 py-1 bg-white/5 text-white border border-blue-500 rounded text-sm font-mono focus:outline-none"
+                          autoFocus
+                        />
+                        <button onClick={saveEditBudget} disabled={editSaving} className="p-1 text-green-400 hover:text-green-300"><Save className="w-3.5 h-3.5" /></button>
+                        <button onClick={cancelEdit} className="p-1 text-gray-500 hover:text-gray-300"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <p className="text-sm text-white font-mono font-medium">
+                          {campaign.total_budget ? fmt(campaign.total_budget) : '—'}
+                        </p>
+                        <button onClick={(e) => openEditBudget(e, campaign)} className="p-0.5 text-gray-600 hover:text-blue-400 transition-colors"><Pencil className="w-3 h-3" /></button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-600 mb-0.5">POSITIONS</p>

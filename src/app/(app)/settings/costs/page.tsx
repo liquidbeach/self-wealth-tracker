@@ -5,9 +5,11 @@ import { createClient } from '@/lib/supabase'
 import {
   Settings, Server, Brain, DollarSign, Calendar, Save,
   CheckCircle, RefreshCw, Trash2, Plus, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight, AlertTriangle,
 } from 'lucide-react'
 
 const fmt = (n: number) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 interface LineItem { category: 'ai_tools' | 'other_costs'; name: string; amount: number }
 
@@ -16,8 +18,6 @@ interface MonthlyCost {
   claude_subscription: number; other_ai_tools: number; other_costs: number
   other_notes: string | null; total_monthly?: number
 }
-
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function parseLineItems(cost: MonthlyCost): LineItem[] {
   if (cost.other_notes) {
@@ -35,39 +35,64 @@ export default function OperatingCostsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [costHistory, setCostHistory] = useState<MonthlyCost[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState('')
-  const [supabase, setSupabase] = useState(0)
-  const [vercel, setVercel] = useState(0)
-  const [apiServices, setApiServices] = useState(0)
+
+  // Month navigation
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
+
+  const monthKey = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-01`
+  const monthLabel = `${MONTHS[currentMonth.month]} ${currentMonth.year}`
+
+  const prevMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev.month === 0) return { year: prev.year - 1, month: 11 }
+      return { ...prev, month: prev.month - 1 }
+    })
+  }
+
+  const nextMonth = () => {
+    const now = new Date()
+    const nextM = currentMonth.month === 11 ? 0 : currentMonth.month + 1
+    const nextY = currentMonth.month === 11 ? currentMonth.year + 1 : currentMonth.year
+    // Don't go beyond current month
+    if (nextY > now.getFullYear() || (nextY === now.getFullYear() && nextM > now.getMonth())) return
+    setCurrentMonth({ year: nextY, month: nextM })
+  }
+
+  // Infrastructure
+  const [infra, setInfra] = useState({ supabase: 0, vercel: 0, api: 0 })
+
+  // Dynamic line items
   const [lineItems, setLineItems] = useState<LineItem[]>([])
-  const [addCat, setAddCat] = useState<'ai_tools'|'other_costs'>('ai_tools')
+  const [addCat, setAddCat] = useState<'ai_tools' | 'other_costs'>('ai_tools')
   const [addName, setAddName] = useState('')
   const [addAmt, setAddAmt] = useState('')
 
-  useEffect(() => {
-    setMounted(true)
-    const now = new Date()
-    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`)
-    loadCosts()
-  }, [])
+  useEffect(() => { setMounted(true); loadCosts() }, [])
 
+  // When month changes, load that month's data
   useEffect(() => {
-    const existing = costHistory.find(c => c.month === selectedMonth)
+    const existing = costHistory.find(c => c.month === monthKey)
     if (existing) {
-      setSupabase(existing.supabase || 0)
-      setVercel(existing.vercel || 0)
-      setApiServices(existing.api_services || 0)
+      setInfra({ supabase: existing.supabase || 0, vercel: existing.vercel || 0, api: existing.api_services || 0 })
       setLineItems(parseLineItems(existing))
     } else {
-      setSupabase(0); setVercel(0); setApiServices(0); setLineItems([])
+      setInfra({ supabase: 0, vercel: 0, api: 0 })
+      setLineItems([])
     }
-  }, [selectedMonth, costHistory])
+    setSaveError(null)
+    setSaved(false)
+  }, [monthKey, costHistory])
 
   const loadCosts = async () => {
     const sb = createClient()
-    const { data } = await sb.from('operating_costs').select('*').order('month', { ascending: false })
+    const { data, error } = await sb.from('operating_costs').select('*').order('month', { ascending: false })
+    if (error) console.error('Load error:', error)
     setCostHistory(data || [])
     setLoading(false)
   }
@@ -85,42 +110,119 @@ export default function OperatingCostsPage() {
 
   const aiTotal = lineItems.filter(i => i.category === 'ai_tools').reduce((s, i) => s + i.amount, 0)
   const otherTotal = lineItems.filter(i => i.category === 'other_costs').reduce((s, i) => s + i.amount, 0)
-  const infraTotal = supabase + vercel + apiServices
+  const infraTotal = infra.supabase + infra.vercel + infra.api
   const grandTotal = infraTotal + aiTotal + otherTotal
 
   const saveCosts = async () => {
     setSaving(true)
+    setSaveError(null)
+
     try {
       const sb = createClient()
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setSaving(false); return }
-      const costData = {
-        supabase, vercel, api_services: apiServices,
-        claude_subscription: aiTotal, other_ai_tools: 0, other_costs: otherTotal,
-        other_notes: JSON.stringify(lineItems), total_monthly: grandTotal,
+      const { data: { user }, error: authErr } = await sb.auth.getUser()
+
+      if (authErr || !user) {
+        setSaveError('Authentication failed: ' + (authErr?.message || 'No user'))
+        setSaving(false)
+        return
       }
-      const { data: existing } = await sb.from('operating_costs').select('id').eq('user_id', user.id).eq('month', selectedMonth).maybeSingle()
-      if (existing) { await sb.from('operating_costs').update(costData).eq('id', existing.id) }
-      else { await sb.from('operating_costs').insert({ ...costData, user_id: user.id, month: selectedMonth }) }
-      setSaved(true); setTimeout(() => setSaved(false), 3000); loadCosts()
-    } catch (err) { console.error('Save failed:', err) }
-    finally { setSaving(false) }
+
+      console.log('Saving costs for month:', monthKey, 'user:', user.id)
+
+      const costData = {
+        supabase: infra.supabase,
+        vercel: infra.vercel,
+        api_services: infra.api,
+        claude_subscription: aiTotal,
+        other_ai_tools: 0,
+        other_costs: otherTotal,
+        other_notes: JSON.stringify(lineItems),
+        total_monthly: grandTotal,
+      }
+
+      console.log('Cost data:', costData)
+
+      // Check for existing record
+      const { data: existing, error: selectErr } = await sb
+        .from('operating_costs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('month', monthKey)
+        .maybeSingle()
+
+      if (selectErr) {
+        console.error('Select error:', selectErr)
+        setSaveError('Failed to check existing record: ' + selectErr.message)
+        setSaving(false)
+        return
+      }
+
+      console.log('Existing record:', existing)
+
+      let result
+      if (existing) {
+        console.log('Updating record:', existing.id)
+        result = await sb
+          .from('operating_costs')
+          .update(costData)
+          .eq('id', existing.id)
+          .select()
+      } else {
+        console.log('Inserting new record')
+        result = await sb
+          .from('operating_costs')
+          .insert({
+            ...costData,
+            user_id: user.id,
+            month: monthKey,
+          })
+          .select()
+      }
+
+      console.log('Save result:', result)
+
+      if (result.error) {
+        setSaveError('Save failed: ' + result.error.message + ' (Code: ' + result.error.code + ')')
+        console.error('Save error:', result.error)
+        setSaving(false)
+        return
+      }
+
+      console.log('Save successful, reloading...')
+
+      // Reload cost history
+      const { data: freshData } = await sb.from('operating_costs').select('*').order('month', { ascending: false })
+      if (freshData) setCostHistory(freshData)
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      console.error('Save exception:', err)
+      setSaveError('Exception: ' + (err.message || String(err)))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const deleteMonth = async (id: string) => {
     if (!confirm('Delete this month?')) return
-    await createClient().from('operating_costs').delete().eq('id', id)
+    const sb = createClient()
+    const { error } = await sb.from('operating_costs').delete().eq('id', id)
+    if (error) console.error('Delete error:', error)
     loadCosts()
   }
 
-  const monthOptions = () => {
-    const opts = []; const now = new Date()
-    for (let i = 0; i < 24; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      opts.push({ key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` })
-    }
-    return opts
-  }
+  // FY calculation for YTD display
+  const now = new Date()
+  const fyStart = now.getMonth() >= 6
+    ? new Date(now.getFullYear(), 6, 1)
+    : new Date(now.getFullYear() - 1, 6, 1)
+  const fyCosts = costHistory.filter(c => new Date(c.month) >= fyStart)
+  const fyYTD = fyCosts.reduce((s, c) => s + (c.total_monthly || 0), 0)
+  const fyMonths = fyCosts.length
+  const fyLabel = fyStart.getMonth() >= 6
+    ? `FY${fyStart.getFullYear()}-${(fyStart.getFullYear() + 1).toString().slice(-2)}`
+    : `FY${fyStart.getFullYear() - 1}-${fyStart.getFullYear().toString().slice(-2)}`
 
   if (!mounted) return <div className="space-y-4 pb-20"><div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-8 text-center"><RefreshCw className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div></div>
 
@@ -131,18 +233,28 @@ export default function OperatingCostsPage() {
         <p className="text-sm text-gray-500">Track monthly infrastructure and tool costs</p>
       </div>
 
-      {/* Month Selector */}
-      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Calendar className="w-4 h-4 text-purple-400" />
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-purple-500">
-            {monthOptions().map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
+      {/* Month Navigator */}
+      <div className="bg-[#1c1c28] border border-gray-800 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={prevMonth} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5" /></button>
+            <div className="text-center min-w-[160px]">
+              <p className="text-base font-semibold text-white">{monthLabel}</p>
+              <p className="text-[10px] text-gray-500">{costHistory.find(c => c.month === monthKey) ? 'Recorded' : 'Not recorded'}</p>
+            </div>
+            <button onClick={nextMonth} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5" /></button>
+          </div>
+          <button onClick={saveCosts} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-500 disabled:opacity-50 transition-colors">
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Month'}
+          </button>
         </div>
-        <button onClick={saveCosts} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-500 disabled:opacity-50 transition-colors">
-          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Month'}
-        </button>
+        {saveError && (
+          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-xs text-red-400">{saveError}</p>
+          </div>
+        )}
       </div>
 
       {/* Infrastructure */}
@@ -150,15 +262,15 @@ export default function OperatingCostsPage() {
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Server className="w-4 h-4 text-blue-400" /> Infrastructure</h3>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Supabase', desc: 'Database & Auth', value: supabase, set: setSupabase },
-            { label: 'Vercel', desc: 'Hosting & CDN', value: vercel, set: setVercel },
-            { label: 'API Services', desc: 'Stock APIs, FX, etc.', value: apiServices, set: setApiServices },
+            { label: 'Supabase', desc: 'Database & Auth', key: 'supabase' as const },
+            { label: 'Vercel', desc: 'Hosting & CDN', key: 'vercel' as const },
+            { label: 'API Services', desc: 'Stock APIs, FX, etc.', key: 'api' as const },
           ].map(f => (
-            <div key={f.label}>
+            <div key={f.key}>
               <label className="block text-sm text-gray-300 mb-1">{f.label}</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input type="number" value={f.value} onChange={(e) => f.set(parseFloat(e.target.value) || 0)} className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500" step="any" min="0" />
+                <input type="number" value={infra[f.key]} onChange={(e) => setInfra({ ...infra, [f.key]: parseFloat(e.target.value) || 0 })} className="w-full pl-8 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500" step="any" min="0" />
               </div>
               <p className="text-[10px] text-gray-600 mt-1">{f.desc}</p>
             </div>
@@ -211,16 +323,21 @@ export default function OperatingCostsPage() {
         </div>
       </div>
 
-      {/* Monthly Total */}
-      <div className="bg-[#0d1117] border border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500 mb-1">TOTAL MONTHLY COST</p>
+      {/* Monthly Total + FY YTD */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-[#0d1117] border border-purple-500/20 rounded-xl p-4">
+          <p className="text-xs text-gray-500 mb-1">THIS MONTH</p>
           <p className="text-2xl font-bold text-white font-mono">{fmt(grandTotal)}</p>
+          <div className="text-[10px] text-gray-500 mt-1 space-y-0.5">
+            {infraTotal > 0 && <p>Infrastructure: <span className="text-blue-400 font-mono">{fmt(infraTotal)}</span></p>}
+            {aiTotal > 0 && <p>AI Tools: <span className="text-green-400 font-mono">{fmt(aiTotal)}</span></p>}
+            {otherTotal > 0 && <p>Other: <span className="text-yellow-400 font-mono">{fmt(otherTotal)}</span></p>}
+          </div>
         </div>
-        <div className="text-right text-xs text-gray-500 space-y-0.5">
-          <p>Infrastructure: <span className="text-blue-400 font-mono">{fmt(infraTotal)}</span></p>
-          <p>AI Tools: <span className="text-green-400 font-mono">{fmt(aiTotal)}</span></p>
-          {otherTotal > 0 && <p>Other: <span className="text-yellow-400 font-mono">{fmt(otherTotal)}</span></p>}
+        <div className="bg-[#0d1117] border border-blue-500/20 rounded-xl p-4">
+          <p className="text-xs text-gray-500 mb-1">{fyLabel} — YTD COSTS</p>
+          <p className="text-2xl font-bold text-white font-mono">{fmt(fyYTD)}</p>
+          <p className="text-[10px] text-gray-500 mt-1">{fyMonths} month{fyMonths !== 1 ? 's' : ''} recorded this FY</p>
         </div>
       </div>
 
@@ -236,21 +353,20 @@ export default function OperatingCostsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead><tr className="border-b border-gray-800">
-                    {['Month','Supabase','Vercel','APIs','AI Tools','Other','Total',''].map(h => <th key={h} className={`px-2 py-2 ${h === 'Month' ? 'text-left' : 'text-right'} text-gray-500 font-semibold`}>{h}</th>)}
+                    {['Month','Infrastructure','AI Tools','Other','Total',''].map(h => <th key={h} className={`px-2 py-2 ${h === 'Month' ? 'text-left' : 'text-right'} text-gray-500 font-semibold`}>{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {costHistory.map(c => {
                       const items = parseLineItems(c)
                       const d = new Date(c.month)
+                      const infraSum = (c.supabase || 0) + (c.vercel || 0) + (c.api_services || 0)
                       return (
                         <tr key={c.id} className="border-b border-gray-800/30 hover:bg-white/5">
                           <td className="px-2 py-2 text-gray-300">
                             {MONTHS[d.getMonth()]} {d.getFullYear()}
                             {items.length > 0 && <div className="flex flex-wrap gap-1 mt-0.5">{items.map((it, i) => <span key={i} className="text-[8px] text-gray-600">{it.name}: {fmt(it.amount)}</span>)}</div>}
                           </td>
-                          <td className="px-2 py-2 text-right font-mono text-gray-400">{fmt(c.supabase || 0)}</td>
-                          <td className="px-2 py-2 text-right font-mono text-gray-400">{fmt(c.vercel || 0)}</td>
-                          <td className="px-2 py-2 text-right font-mono text-gray-400">{fmt(c.api_services || 0)}</td>
+                          <td className="px-2 py-2 text-right font-mono text-blue-400">{fmt(infraSum)}</td>
                           <td className="px-2 py-2 text-right font-mono text-green-400">{fmt(c.claude_subscription || 0)}</td>
                           <td className="px-2 py-2 text-right font-mono text-yellow-400">{fmt(c.other_costs || 0)}</td>
                           <td className="px-2 py-2 text-right font-mono text-white font-medium">{fmt(c.total_monthly || 0)}</td>
