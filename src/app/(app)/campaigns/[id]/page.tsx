@@ -509,7 +509,6 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {campaign.description && <p className="text-xs text-gray-500">{campaign.description}</p>}
       <p className="text-[10px] text-gray-600">
         {positions.length} positions × {fmt(positions[0]?.planned_deploy || 12500)} per tranche • {scenario === 'bull' ? 'Bull' : 'Base'} case • CGT discount {(cgtDiscount * 100).toFixed(1)}% applied • {new Date(campaign.start_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })} → {new Date(campaign.end_date).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
       </p>
