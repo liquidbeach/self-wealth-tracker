@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FMP_BASE_URL = 'https://financialmodelingprep.com/api/v3'
+const FMP_BASE_URL = 'https://financialmodelingprep.com/stable'
 
 // Get API key - check both with and without NEXT_PUBLIC prefix
 function getApiKey(): string {
@@ -52,7 +52,7 @@ async function fetchKeyMetrics(symbol: string) {
   
   try {
     const response = await fetch(
-      `${FMP_BASE_URL}/key-metrics/${symbol}?period=annual&limit=1&apikey=${apiKey}`
+      `${FMP_BASE_URL}/key-metrics?symbol=${symbol}&period=annual&limit=1&apikey=${apiKey}`
     )
     if (!response.ok) return null
     const data = await response.json()
