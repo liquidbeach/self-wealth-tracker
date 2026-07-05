@@ -27,11 +27,15 @@ interface Transaction {
   name: string
   date: string
   units: number
-  price: number // purchase_price for BUY, proceeds/units for SELL
-  total: number // units * price for BUY, proceeds for SELL
+  price: number // ALWAYS in AUD for consistent display
+  total: number // ALWAYS in AUD
+  priceNative?: number // original price in native currency (USD)
+  totalNative?: number // original total in native currency
+  currency?: string // 'USD' or 'AUD'
+  exchangeRate?: number // AUD per USD at transaction
   brokerage?: number
-  gain?: number // Only for SELL
-  costBase?: number // Only for SELL
+  gain?: number // Only for SELL (AUD)
+  costBase?: number // Only for SELL (AUD)
   wasSold?: boolean // For BUYs that have been sold
 }
 
@@ -88,15 +92,25 @@ export default function ActivityPage() {
     try {
       const supabase = createClient()
       
-      // Load REMAINING lots with holdings relationship
+      // Load REMAINING lots with holdings relationship (include currency)
       const { data: lotsData, error: lotsError } = await supabase
         .from('lots')
-        .select('id, holding_id, units, purchase_price, purchase_date, holdings(ticker, name)')
+        .select('id, holding_id, units, purchase_price, purchase_date, holdings(ticker, name, currency)')
         .order('purchase_date', { ascending: false })
       
       if (lotsError) {
         console.error('Lots fetch error:', lotsError)
       }
+
+      // Fetch current exchange rate for converting native-currency lots to AUD
+      let usdAud = 1.55
+      try {
+        const fxRes = await fetch('/api/exchange-rates')
+        if (fxRes.ok) {
+          const fx = await fxRes.json()
+          if (fx.USD_AUD) usdAud = fx.USD_AUD
+        }
+      } catch {}
       
       // Load SELLs from cgt_sales (also contains original purchase info for SOLD lots)
       const { data: salesData, error: salesError } = await supabase
@@ -111,51 +125,81 @@ export default function ActivityPage() {
       console.log('Lots data:', lotsData)
       console.log('Sales data:', salesData)
       
-      // Transform REMAINING lots as BUYs
-      const remainingBuys: Transaction[] = (lotsData || []).map((lot: any) => ({
-        id: `buy-${lot.id}`,
-        type: 'BUY' as const,
-        ticker: lot.holdings?.ticker || 'Unknown',
-        name: lot.holdings?.name || 'Unknown',
-        date: lot.purchase_date,
-        units: lot.units,
-        price: lot.purchase_price,
-        total: lot.units * lot.purchase_price,
-        brokerage: 0,
-      }))
+      // Transform REMAINING lots as BUYs — convert to AUD for consistent display
+      const remainingBuys: Transaction[] = (lotsData || []).map((lot: any) => {
+        const currency = lot.holdings?.currency || 'AUD'
+        const isUSD = currency === 'USD'
+        const priceNative = lot.purchase_price
+        const priceAUD = isUSD ? priceNative * usdAud : priceNative
+        return {
+          id: `buy-${lot.id}`,
+          type: 'BUY' as const,
+          ticker: lot.holdings?.ticker || 'Unknown',
+          name: lot.holdings?.name || 'Unknown',
+          date: lot.purchase_date,
+          units: lot.units,
+          price: priceAUD,
+          total: lot.units * priceAUD,
+          priceNative: isUSD ? priceNative : undefined,
+          totalNative: isUSD ? lot.units * priceNative : undefined,
+          currency,
+          exchangeRate: isUSD ? usdAud : undefined,
+          brokerage: 0,
+        }
+      })
       
       // Reconstruct SOLD lots as BUYs from cgt_sales
-      // Each sale record contains the original purchase info
-      const soldBuys: Transaction[] = (salesData || []).map((sale: any) => ({
-        id: `sold-buy-${sale.id}`,
-        type: 'BUY' as const,
-        ticker: sale.ticker,
-        name: sale.name || sale.ticker,
-        date: sale.purchase_date || sale.sale_date, // Use purchase_date if available
-        units: sale.units,
-        price: sale.purchase_price || (sale.cost_base / sale.units), // Calculate from cost_base if no purchase_price
-        total: sale.cost_base || (sale.units * sale.purchase_price),
-        brokerage: sale.buy_brokerage || 0,
-        wasSold: true, // Mark as sold
-      }))
+      // cgt_sales stores purchase_price_aud (AUD) and purchase_price (native)
+      const soldBuys: Transaction[] = (salesData || []).map((sale: any) => {
+        const isUSD = sale.currency === 'USD'
+        // AUD cost base per unit
+        const priceAUD = sale.purchase_price_aud || (sale.cost_base / sale.units)
+        const priceNative = sale.purchase_price
+        return {
+          id: `sold-buy-${sale.id}`,
+          type: 'BUY' as const,
+          ticker: sale.ticker,
+          name: sale.name || sale.ticker,
+          date: sale.purchase_date || sale.sale_date,
+          units: sale.units,
+          price: priceAUD,
+          total: sale.cost_base || (sale.units * priceAUD),
+          priceNative: isUSD ? priceNative : undefined,
+          totalNative: isUSD ? sale.units * priceNative : undefined,
+          currency: sale.currency || 'AUD',
+          exchangeRate: isUSD ? sale.exchange_rate : undefined,
+          brokerage: sale.buy_brokerage || 0,
+          wasSold: true,
+        }
+      })
       
       // Combine all BUYs (remaining + sold)
       const allBuys = [...remainingBuys, ...soldBuys]
       
-      // Transform SELLs
-      const sells: Transaction[] = (salesData || []).map((sale: any) => ({
-        id: `sell-${sale.id}`,
-        type: 'SELL' as const,
-        ticker: sale.ticker,
-        name: sale.name || sale.ticker,
-        date: sale.sale_date,
-        units: sale.units,
-        price: sale.proceeds / sale.units,
-        total: sale.proceeds,
-        brokerage: (sale.sell_brokerage || 0) + (sale.buy_brokerage || 0),
-        gain: sale.gross_gain,
-        costBase: sale.cost_base,
-      }))
+      // Transform SELLs — proceeds already in AUD in cgt_sales
+      const sells: Transaction[] = (salesData || []).map((sale: any) => {
+        const isUSD = sale.currency === 'USD'
+        // proceeds is in AUD; sale_price_aud is per-unit AUD; sale_price is native per-unit
+        const priceAUD = sale.sale_price_aud || (sale.proceeds / sale.units)
+        const priceNative = sale.sale_price
+        return {
+          id: `sell-${sale.id}`,
+          type: 'SELL' as const,
+          ticker: sale.ticker,
+          name: sale.name || sale.ticker,
+          date: sale.sale_date,
+          units: sale.units,
+          price: priceAUD,
+          total: sale.proceeds,
+          priceNative: isUSD ? priceNative : undefined,
+          totalNative: isUSD ? sale.units * priceNative : undefined,
+          currency: sale.currency || 'AUD',
+          exchangeRate: isUSD ? sale.exchange_rate : undefined,
+          brokerage: (sale.sell_brokerage || 0) + (sale.buy_brokerage || 0),
+          gain: sale.gross_gain,
+          costBase: sale.cost_base,
+        }
+      })
       
       // Combine and sort
       const all = [...allBuys, ...sells].sort((a, b) => 
@@ -481,6 +525,11 @@ export default function ActivityPage() {
                                   </span>
                                   <span className="text-sm text-gray-400 ml-2">
                                     {tx.units.toLocaleString()} @ {fmt(tx.price)}
+                                    {tx.currency === 'USD' && tx.priceNative !== undefined && (
+                                      <span className="text-[10px] text-gray-600 ml-1">
+                                        (US${tx.priceNative.toFixed(2)})
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
                               </div>
@@ -489,7 +538,14 @@ export default function ActivityPage() {
                               <div className="text-right">
                                 <p className="text-sm font-bold text-white">
                                   {tx.type === 'BUY' ? '-' : '+'}{fmt(tx.total)}
+                                  <span className="text-[10px] text-gray-500 font-normal ml-1">AUD</span>
                                 </p>
+                                {tx.currency === 'USD' && tx.totalNative !== undefined && (
+                                  <p className="text-[10px] text-gray-600">
+                                    US${tx.totalNative.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {tx.exchangeRate && <span className="ml-1">@ {tx.exchangeRate.toFixed(3)}</span>}
+                                  </p>
+                                )}
                                 {tx.type === 'SELL' && tx.gain !== undefined && (
                                   <p className={`text-xs ${tx.gain >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {tx.gain >= 0 ? '+' : ''}{fmt(tx.gain)}

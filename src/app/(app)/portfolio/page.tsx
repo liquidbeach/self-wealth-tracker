@@ -84,6 +84,12 @@ interface PortfolioSummary {
   totalPnL: number
   totalPnLPercent: number
   holdingsCount: number
+  // Currency-split subtotals (in native currency)
+  usdValue: number      // US holdings value in USD
+  usdCost: number       // US holdings cost in USD
+  audValue: number      // ASX holdings value in AUD
+  audCost: number       // ASX holdings cost in AUD
+  usdValueInAUD: number // US holdings converted to AUD
 }
 
 async function fetchLivePrice(symbol: string): Promise<{ price: number; change: number; changePercent: number } | null> {
@@ -119,11 +125,13 @@ export default function PortfolioPage() {
 
   const [summary, setSummary] = useState<PortfolioSummary>({
     totalCost: 0, totalValue: 0, totalPnL: 0, totalPnLPercent: 0, holdingsCount: 0,
+    usdValue: 0, usdCost: 0, audValue: 0, audCost: 0, usdValueInAUD: 0,
   })
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES)
 
   const calculateSummary = useCallback((holdingsData: Holding[], rates: Record<string, number>) => {
     let totalCostAUD = 0, totalValueAUD = 0, holdingsWithValue = 0
+    let usdValue = 0, usdCost = 0, audValue = 0, audCost = 0
 
     holdingsData.forEach(holding => {
       const lots = holding.lots || []
@@ -139,12 +147,28 @@ export default function PortfolioPage() {
         totalCostAUD += cost * rate
         totalValueAUD += value * rate
         holdingsWithValue++
+
+        // Track native-currency subtotals
+        if (currency === 'USD') {
+          usdValue += value
+          usdCost += cost
+        } else {
+          // AUD (and any other non-USD treated as AUD-denominated for the ASX bucket)
+          audValue += value
+          audCost += cost
+        }
       }
     })
 
     const totalPnL = totalValueAUD - totalCostAUD
     const totalPnLPercent = totalCostAUD > 0 ? (totalPnL / totalCostAUD) * 100 : 0
-    setSummary({ totalCost: totalCostAUD, totalValue: totalValueAUD, totalPnL, totalPnLPercent, holdingsCount: holdingsWithValue })
+    const usdRate = rates['USD'] || 1
+    setSummary({
+      totalCost: totalCostAUD, totalValue: totalValueAUD, totalPnL, totalPnLPercent,
+      holdingsCount: holdingsWithValue,
+      usdValue, usdCost, audValue, audCost,
+      usdValueInAUD: usdValue * usdRate,
+    })
   }, [])
 
   const refreshLivePrices = useCallback(async (holdingsToUpdate: Holding[]) => {
@@ -334,6 +358,51 @@ export default function PortfolioPage() {
             <div className="mt-3 flex items-center gap-2 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded">
               <AlertCircle className="w-3 h-3" />
               <span>{priceErrors} stock(s) couldn't fetch live prices.</span>
+            </div>
+          )}
+
+          {/* Currency-split subtotals */}
+          {(summary.usdValue > 0 || summary.audValue > 0) && (
+            <div className="mt-4 pt-3 border-t border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* US Holdings in USD */}
+              {summary.usdValue > 0 && (
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400 mb-1">🇺🇸 US Holdings <span className="text-blue-400">(USD)</span></p>
+                  <p className="text-lg font-bold text-white">
+                    US${summary.usdValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                  <p className={`text-xs ${(summary.usdValue - summary.usdCost) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(summary.usdValue - summary.usdCost) >= 0 ? '+' : ''}US${Math.abs(summary.usdValue - summary.usdCost).toLocaleString('en-US', { maximumFractionDigits: 0 })} P&L
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">
+                    ≈ A${summary.usdValueInAUD.toLocaleString('en-AU', { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+              )}
+
+              {/* ASX Holdings in AUD */}
+              {summary.audValue > 0 && (
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400 mb-1">🇦🇺 ASX Holdings <span className="text-cyan-400">(AUD)</span></p>
+                  <p className="text-lg font-bold text-white">
+                    A${summary.audValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                  <p className={`text-xs ${(summary.audValue - summary.audCost) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(summary.audValue - summary.audCost) >= 0 ? '+' : ''}A${Math.abs(summary.audValue - summary.audCost).toLocaleString('en-AU', { maximumFractionDigits: 0 })} P&L
+                  </p>
+                </div>
+              )}
+
+              {/* Grand Total in AUD */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                <p className="text-xs text-gray-400 mb-1">Total Portfolio <span className="text-emerald-400">(AUD)</span></p>
+                <p className="text-lg font-bold text-emerald-400">
+                  A${summary.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  US converted @ {(exchangeRates['USD'] || 1.55).toFixed(3)}
+                </p>
+              </div>
             </div>
           )}
         </div>

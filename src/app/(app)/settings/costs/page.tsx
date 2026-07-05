@@ -349,7 +349,7 @@ export default function OperatingCostsPage() {
         {showHistory && (
           <div className="px-4 pb-4">
             {costHistory.length === 0 ? <p className="text-sm text-gray-500 text-center py-4">No costs recorded yet</p> : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-xs">
                   <thead><tr className="border-b border-gray-800">
                     {['Month','Infrastructure','AI Tools','Other','Total',''].map(h => <th key={h} className={`px-2 py-2 ${h === 'Month' ? 'text-left' : 'text-right'} text-gray-500 font-semibold`}>{h}</th>)}

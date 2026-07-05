@@ -112,11 +112,17 @@ export default function CGTPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // Brokerage State
-  const [broker, setBroker] = useState<'stake' | 'commsec' | 'cmc' | 'custom'>('stake')
-  const [customSellBrokerage, setCustomSellBrokerage] = useState<string>('')
-  const [buyBrokerageAdjustment, setBuyBrokerageAdjustment] = useState<string>('')
-  const [regulatoryFees, setRegulatoryFees] = useState<string>('') // SEC, FINRA, etc.
+  // Brokerage State — all manual, editable, no hardcoded broker logic
+  const [broker, setBroker] = useState<string>('') // free-text label (Stake/CommSec/CMC/etc.)
+  const [buyBrokerage, setBuyBrokerage] = useState<string>('') // buy cost
+  const [sellBrokerage, setSellBrokerage] = useState<string>('') // sell cost
+  const [regulatoryFees, setRegulatoryFees] = useState<string>('') // SEC, FINRA, GST, etc.
+  const [conversionFees, setConversionFees] = useState<string>('') // FX conversion fee
+  const [otherFees, setOtherFees] = useState<string>('') // catch-all
+  // Which currency are the fees entered in? (matches stock currency by default)
+  const [feesCurrency, setFeesCurrency] = useState<'native' | 'AUD'>('native')
+  // Explicit market override — 'auto' follows the holding, or force US/ASX
+  const [marketOverride, setMarketOverride] = useState<'auto' | 'US' | 'ASX'>('auto')
   
   // Tax Estimator State
   const [baseSalary, setBaseSalary] = useState<string>('')
@@ -163,38 +169,12 @@ export default function CGTPage() {
     }
   }, [offsetBalance])
 
-  // Calculate sell brokerage based on broker and proceeds
-  const calculateSellBrokerage = (proceeds: number, currency: string, rate: number): number => {
-    if (broker === 'custom') {
-      return parseFloat(customSellBrokerage) || 0
-    }
-    
-    if (broker === 'stake') {
-      // Stake: $3 flat (USD for US stocks, AUD for AU stocks)
-      return 3
-    }
-    
-    if (broker === 'cmc') {
-      // CMC: $0 first trade, then $11 or 0.10%
-      // Assume not first trade
-      return Math.max(11, proceeds * 0.001)
-    }
-    
-    if (broker === 'commsec') {
-      // CommSec tiered (AUD):
-      // Need to convert to AUD for tier calculation if USD
-      let proceedsAUD = proceeds
-      if (currency === 'USD') {
-        proceedsAUD = proceeds * rate
-      }
-      
-      if (proceedsAUD <= 1000) return 5
-      if (proceedsAUD <= 10000) return 10
-      if (proceedsAUD <= 25000) return 19.95
-      return proceedsAUD * 0.0012 // 0.12%
-    }
-    
-    return 0
+  // Convert a fee entered in the fees currency into AUD
+  // If fees are entered in native (stock) currency and stock is USD, multiply by rate.
+  const feeToAUD = (feeNative: number, currency: string, rate: number): number => {
+    if (feesCurrency === 'AUD') return feeNative
+    // fees entered in native currency
+    return currency === 'USD' ? feeNative * rate : feeNative
   }
 
   const loadData = useCallback(async () => {
@@ -416,7 +396,6 @@ export default function CGTPage() {
     const units = parseFloat(saleUnits)
     const price = parseFloat(salePrice)
     const rate = parseFloat(exchangeRate) || 1
-    const buyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
 
     // FIFO lot selection
     const sortedLots = [...holding.lots].sort(
@@ -425,12 +404,23 @@ export default function CGTPage() {
 
     let remainingUnits = units
     const salesToCreate: Partial<SoldLot>[] = []
-    
-    // Calculate total proceeds for brokerage calculation
-    const totalGrossProceeds = units * price
-    const sellBrokerage = calculateSellBrokerage(totalGrossProceeds, holding.currency, rate)
-    const regFees = parseFloat(regulatoryFees) || 0
-    const totalSellFees = sellBrokerage + regFees
+
+    // Effective trade currency: override wins, else the holding's currency
+    const tradeCurrency =
+      marketOverride === 'US' ? 'USD'
+      : marketOverride === 'ASX' ? 'AUD'
+      : holding.currency
+
+    // All fees are manually entered. Convert each to AUD based on feesCurrency toggle.
+    const buyBrokerageAUD = feeToAUD(parseFloat(buyBrokerage) || 0, tradeCurrency, rate)
+    const sellBrokerageAUD = feeToAUD(parseFloat(sellBrokerage) || 0, tradeCurrency, rate)
+    const regFeesAUD = feeToAUD(parseFloat(regulatoryFees) || 0, tradeCurrency, rate)
+    const conversionFeesAUD = feeToAUD(parseFloat(conversionFees) || 0, tradeCurrency, rate)
+    const otherFeesAUD = feeToAUD(parseFloat(otherFees) || 0, tradeCurrency, rate)
+
+    // Total sell-side fees (everything except buy brokerage) in AUD
+    const totalSellFees = sellBrokerageAUD + regFeesAUD + conversionFeesAUD + otherFeesAUD
+    const buyBrokerageAdj = buyBrokerageAUD
     
     // Distribute brokerage proportionally across lots
     let totalUnitsToSell = 0
@@ -450,8 +440,8 @@ export default function CGTPage() {
       const heldOver12Months = holdingPeriodDays >= 365
 
       // Convert to AUD if USD
-      const purchasePriceAUD = holding.currency === 'USD' ? lot.purchase_price * rate : lot.purchase_price
-      const salePriceAUD = holding.currency === 'USD' ? price * rate : price
+      const purchasePriceAUD = tradeCurrency === 'USD' ? lot.purchase_price * rate : lot.purchase_price
+      const salePriceAUD = tradeCurrency === 'USD' ? price * rate : price
 
       // Proportional brokerage for this lot
       const lotProportion = unitsFromThisLot / totalUnitsToSell
@@ -476,7 +466,7 @@ export default function CGTPage() {
         sale_price: price,
         sale_price_aud: salePriceAUD,
         purchase_price_aud: purchasePriceAUD,
-        currency: holding.currency,
+        currency: tradeCurrency,
         exchange_rate: rate,
         cost_base: costBase,
         proceeds,
@@ -537,10 +527,13 @@ export default function CGTPage() {
     setSelectedHolding('')
     setSaleUnits('')
     setSalePrice('')
-    setBroker('stake')
-    setCustomSellBrokerage('')
-    setBuyBrokerageAdjustment('')
+    setBroker('')
+    setBuyBrokerage('')
+    setSellBrokerage('')
     setRegulatoryFees('')
+    setConversionFees('')
+    setOtherFees('')
+    setMarketOverride('auto')
     setSubmitting(false)
     loadData()
   }
@@ -590,16 +583,26 @@ export default function CGTPage() {
 
   // Preview calculation for modal
   const selectedHoldingData = holdings.find(h => h.id === selectedHolding)
+  // Effective currency: explicit override wins, else follow the holding
+  const effectiveCurrency =
+    marketOverride === 'US' ? 'USD'
+    : marketOverride === 'ASX' ? 'AUD'
+    : (selectedHoldingData?.currency || 'AUD')
+  const isUSTrade = effectiveCurrency === 'USD'
   const previewUnits = parseFloat(saleUnits) || 0
   const previewPrice = parseFloat(salePrice) || 0
   const previewRate = parseFloat(exchangeRate) || 1
+  const previewCurrency = effectiveCurrency
   const previewGrossProceeds = previewUnits * previewPrice
-  const previewSellBrokerage = selectedHoldingData 
-    ? calculateSellBrokerage(previewGrossProceeds, selectedHoldingData.currency, previewRate)
-    : 0
-  const previewRegFees = parseFloat(regulatoryFees) || 0
-  const previewBuyBrokerageAdj = parseFloat(buyBrokerageAdjustment) || 0
-  const previewTotalSellFees = previewSellBrokerage + previewRegFees
+  // All fees manual; convert to AUD for preview using the same feeToAUD logic
+  const previewBuyBrokerage = feeToAUD(parseFloat(buyBrokerage) || 0, previewCurrency, previewRate)
+  const previewSellBrokerage = feeToAUD(parseFloat(sellBrokerage) || 0, previewCurrency, previewRate)
+  const previewRegFees = feeToAUD(parseFloat(regulatoryFees) || 0, previewCurrency, previewRate)
+  const previewConversionFees = feeToAUD(parseFloat(conversionFees) || 0, previewCurrency, previewRate)
+  const previewOtherFees = feeToAUD(parseFloat(otherFees) || 0, previewCurrency, previewRate)
+  const previewBuyBrokerageAdj = previewBuyBrokerage
+  const previewTotalSellFees = previewSellBrokerage + previewRegFees + previewConversionFees + previewOtherFees
+  const feesCurLabel = feesCurrency === 'AUD' ? 'AUD' : previewCurrency
 
   if (loading) {
     return (
@@ -1205,7 +1208,7 @@ export default function CGTPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Sale Price per Unit ({selectedHoldingData?.currency || 'USD'})
+                  Sale Price per Unit ({effectiveCurrency})
                 </label>
                 <input
                   type="number"
@@ -1217,7 +1220,33 @@ export default function CGTPage() {
                 />
               </div>
 
-              {selectedHoldingData?.currency === 'USD' && (
+              {/* Market selector — drives currency, fees, conversion */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Market</label>
+                <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-gray-800">
+                  {[
+                    { val: 'auto', label: selectedHoldingData ? `Auto (${selectedHoldingData.currency})` : 'Auto' },
+                    { val: 'ASX', label: 'ASX (AUD)' },
+                    { val: 'US', label: 'US (USD)' },
+                  ].map(opt => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => setMarketOverride(opt.val as any)}
+                      className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        marketOverride === opt.val ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-600 mt-1">
+                  {isUSTrade ? 'US trade — prices & fees in USD, converted to AUD for CGT' : 'ASX trade — everything in AUD'}
+                </p>
+              </div>
+
+              {isUSTrade && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     Exchange Rate (AUD per USD)
@@ -1236,112 +1265,99 @@ export default function CGTPage() {
                 </div>
               )}
 
-              {/* Brokerage Section */}
+              {/* Fees Section — all manual & editable */}
               <div className="border-t border-gray-800 pt-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Brokerage Fees</label>
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Broker</label>
-                    <select
-                      value={broker}
-                      onChange={(e) => setBroker(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="stake">Stake ($3 flat)</option>
-                      <option value="commsec">CommSec (tiered: $5-0.12%)</option>
-                      <option value="cmc">CMC ($11 or 0.10%)</option>
-                      <option value="custom">Custom amount</option>
-                    </select>
-                  </div>
-
-                  {broker === 'custom' && (
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Sell Brokerage</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                        <input
-                          type="number"
-                          value={customSellBrokerage}
-                          onChange={(e) => setCustomSellBrokerage(e.target.value)}
-                          placeholder="0.00"
-                          step="0.01"
-                          className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Buy Brokerage Adjustment (if not in purchase price)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input
-                        type="number"
-                        value={buyBrokerageAdjustment}
-                        onChange={(e) => setBuyBrokerageAdjustment(e.target.value)}
-                        placeholder="0.00"
-                        step="0.01"
-                        className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Add if purchase price didn't include brokerage
-                    </p>
-                  </div>
-
-                  {/* Regulatory Fees */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Regulatory/Other Fees (SEC, FINRA, etc.)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input
-                        type="number"
-                        value={regulatoryFees}
-                        onChange={(e) => setRegulatoryFees(e.target.value)}
-                        placeholder="0.00"
-                        step="0.01"
-                        className="w-full pl-7 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Enter from trade confirmation (US stocks)
-                    </p>
-                  </div>
-
-                  {/* Brokerage Preview */}
-                  {previewUnits > 0 && previewPrice > 0 && (
-                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-xs">
-                      <p className="font-medium text-orange-400 mb-1">Fees Preview</p>
-                      <div className="space-y-1 text-orange-300">
-                        <div className="flex justify-between">
-                          <span>Sell Brokerage:</span>
-                          <span>${previewSellBrokerage.toFixed(2)}</span>
-                        </div>
-                        {previewRegFees > 0 && (
-                          <div className="flex justify-between">
-                            <span>Regulatory Fees:</span>
-                            <span>${previewRegFees.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {previewBuyBrokerageAdj > 0 && (
-                          <div className="flex justify-between">
-                            <span>Buy Brokerage Adj:</span>
-                            <span>${previewBuyBrokerageAdj.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-medium border-t border-orange-500/30 pt-1">
-                          <span>Total Fees:</span>
-                          <span>${(previewTotalSellFees + previewBuyBrokerageAdj).toFixed(2)}</span>
-                        </div>
-                      </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-300">Trade Costs & Fees</label>
+                  {isUSTrade && (
+                    <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setFeesCurrency('native')}
+                        className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${feesCurrency === 'native' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500'}`}
+                      >
+                        Fees in USD
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFeesCurrency('AUD')}
+                        className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${feesCurrency === 'AUD' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500'}`}
+                      >
+                        Fees in AUD
+                      </button>
                     </div>
                   )}
                 </div>
+
+                {/* Broker label */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-500 mb-1">Broker (optional label)</label>
+                  <input
+                    type="text"
+                    value={broker}
+                    onChange={(e) => setBroker(e.target.value)}
+                    placeholder="e.g. Stake, CommSec, CMC"
+                    className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Buy Brokerage', value: buyBrokerage, set: setBuyBrokerage, hint: 'If not already in cost base' },
+                    { label: 'Sell Brokerage', value: sellBrokerage, set: setSellBrokerage, hint: 'Broker sell fee' },
+                    { label: 'Regulatory Fees', value: regulatoryFees, set: setRegulatoryFees, hint: 'SEC, FINRA, GST' },
+                    { label: 'FX Conversion Fee', value: conversionFees, set: setConversionFees, hint: 'USD↔AUD spread' },
+                    { label: 'Other Fees', value: otherFees, set: setOtherFees, hint: 'Anything else' },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                          {feesCurLabel === 'USD' ? 'US$' : 'A$'}
+                        </span>
+                        <input
+                          type="number"
+                          value={f.value}
+                          onChange={(e) => f.set(e.target.value)}
+                          placeholder="0.00"
+                          step="0.01"
+                          className="w-full pl-9 pr-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{f.hint}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fees Preview — always in AUD */}
+                {previewUnits > 0 && previewPrice > 0 && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-xs mt-3">
+                    <p className="font-medium text-orange-400 mb-1">
+                      Fees Preview (converted to AUD{feesCurrency === 'native' && previewCurrency === 'USD' ? ` @ ${previewRate}` : ''})
+                    </p>
+                    <div className="space-y-1 text-orange-300">
+                      {previewBuyBrokerage > 0 && (
+                        <div className="flex justify-between"><span>Buy Brokerage:</span><span>A${previewBuyBrokerage.toFixed(2)}</span></div>
+                      )}
+                      {previewSellBrokerage > 0 && (
+                        <div className="flex justify-between"><span>Sell Brokerage:</span><span>A${previewSellBrokerage.toFixed(2)}</span></div>
+                      )}
+                      {previewRegFees > 0 && (
+                        <div className="flex justify-between"><span>Regulatory:</span><span>A${previewRegFees.toFixed(2)}</span></div>
+                      )}
+                      {previewConversionFees > 0 && (
+                        <div className="flex justify-between"><span>FX Conversion:</span><span>A${previewConversionFees.toFixed(2)}</span></div>
+                      )}
+                      {previewOtherFees > 0 && (
+                        <div className="flex justify-between"><span>Other:</span><span>A${previewOtherFees.toFixed(2)}</span></div>
+                      )}
+                      <div className="flex justify-between font-medium border-t border-orange-500/30 pt-1">
+                        <span>Total Fees:</span>
+                        <span>A${(previewTotalSellFees + previewBuyBrokerageAdj).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
