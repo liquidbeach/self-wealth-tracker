@@ -108,7 +108,8 @@ export default function CGTPage() {
   const [saleUnits, setSaleUnits] = useState<string>('')
   const [saleDate, setSaleDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [salePrice, setSalePrice] = useState<string>('')
-  const [exchangeRate, setExchangeRate] = useState<string>('1.55') // Default AUD/USD
+  const [exchangeRate, setExchangeRate] = useState<string>('1.55') // AUD/USD at SALE date
+  const [purchaseExchangeRate, setPurchaseExchangeRate] = useState<string>('') // AUD/USD at PURCHASE date (ATO monthly avg)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -395,7 +396,9 @@ export default function CGTPage() {
 
     const units = parseFloat(saleUnits)
     const price = parseFloat(salePrice)
-    const rate = parseFloat(exchangeRate) || 1
+    const rate = parseFloat(exchangeRate) || 1  // sale-date rate
+    // Purchase-date rate: use entered value, else fall back to sale rate for backward compat
+    const buyRate = parseFloat(purchaseExchangeRate) || rate
 
     // FIFO lot selection
     const sortedLots = [...holding.lots].sort(
@@ -439,8 +442,8 @@ export default function CGTPage() {
       const holdingPeriodDays = holdingPeriodMs / (1000 * 60 * 60 * 24)
       const heldOver12Months = holdingPeriodDays >= 365
 
-      // Convert to AUD if USD
-      const purchasePriceAUD = tradeCurrency === 'USD' ? lot.purchase_price * rate : lot.purchase_price
+      // Convert to AUD if USD — purchase uses buy-date rate, sale uses sale-date rate (ATO monthly averages)
+      const purchasePriceAUD = tradeCurrency === 'USD' ? lot.purchase_price * buyRate : lot.purchase_price
       const salePriceAUD = tradeCurrency === 'USD' ? price * rate : price
 
       // Proportional brokerage for this lot
@@ -534,6 +537,7 @@ export default function CGTPage() {
     setConversionFees('')
     setOtherFees('')
     setMarketOverride('auto')
+    setPurchaseExchangeRate('')
     setSubmitting(false)
     loadData()
   }
@@ -1247,21 +1251,39 @@ export default function CGTPage() {
               </div>
 
               {isUSTrade && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Exchange Rate (AUD per USD)
-                  </label>
-                  <input
-                    type="number"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(e.target.value)}
-                    placeholder="1.55"
-                    step="0.01"
-                    className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use RBA exchange rate on sale date for ATO compliance
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Purchase FX Rate (AUD per USD)
+                    </label>
+                    <input
+                      type="number"
+                      value={purchaseExchangeRate}
+                      onChange={(e) => setPurchaseExchangeRate(e.target.value)}
+                      placeholder="e.g. 1.528"
+                      step="0.001"
+                      className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      ATO monthly avg for the BUY month. Leave blank to use sale rate.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Sale FX Rate (AUD per USD)
+                    </label>
+                    <input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(e.target.value)}
+                      placeholder="e.g. 1.424"
+                      step="0.001"
+                      className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      ATO monthly avg for the SELL month. Note: ATO quotes USD per A$1 — invert it (1 ÷ 0.7024 = 1.424).
+                    </p>
+                  </div>
                 </div>
               )}
 
