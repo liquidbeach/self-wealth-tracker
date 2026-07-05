@@ -124,6 +124,13 @@ export default function CGTPage() {
   const [feesCurrency, setFeesCurrency] = useState<'native' | 'AUD'>('native')
   // Explicit market override — 'auto' follows the holding, or force US/ASX
   const [marketOverride, setMarketOverride] = useState<'auto' | 'US' | 'ASX'>('auto')
+
+  // Historical sale mode — for sales where the holding no longer exists
+  const [historicalMode, setHistoricalMode] = useState(false)
+  const [histTicker, setHistTicker] = useState('')
+  const [histName, setHistName] = useState('')
+  const [histPurchaseDate, setHistPurchaseDate] = useState('')
+  const [histPurchasePrice, setHistPurchasePrice] = useState('')
   
   // Tax Estimator State
   const [baseSalary, setBaseSalary] = useState<string>('')
@@ -382,7 +389,98 @@ export default function CGTPage() {
     return 45
   }
 
+  const handleHistoricalSale = async () => {
+    if (!histTicker || !saleUnits || !saleDate || !salePrice || !histPurchaseDate || !histPurchasePrice) {
+      setError('Please fill in all fields (ticker, purchase date/price, sale date/price, units)')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setError('Not authenticated'); setSubmitting(false); return }
+
+      const units = parseFloat(saleUnits)
+      const price = parseFloat(salePrice)
+      const purchPrice = parseFloat(histPurchasePrice)
+      const rate = parseFloat(exchangeRate) || 1
+      const buyRate = parseFloat(purchaseExchangeRate) || rate
+
+      const tradeCurrency =
+        marketOverride === 'US' ? 'USD'
+        : marketOverride === 'ASX' ? 'AUD'
+        : 'AUD'
+
+      // Fees to AUD
+      const buyBrokerageAUD = feeToAUD(parseFloat(buyBrokerage) || 0, tradeCurrency, rate)
+      const sellBrokerageAUD = feeToAUD(parseFloat(sellBrokerage) || 0, tradeCurrency, rate)
+      const regFeesAUD = feeToAUD(parseFloat(regulatoryFees) || 0, tradeCurrency, rate)
+      const conversionFeesAUD = feeToAUD(parseFloat(conversionFees) || 0, tradeCurrency, rate)
+      const otherFeesAUD = feeToAUD(parseFloat(otherFees) || 0, tradeCurrency, rate)
+      const totalSellFees = sellBrokerageAUD + regFeesAUD + conversionFeesAUD + otherFeesAUD
+
+      // AUD conversions with separate rates
+      const purchasePriceAUD = tradeCurrency === 'USD' ? purchPrice * buyRate : purchPrice
+      const salePriceAUD = tradeCurrency === 'USD' ? price * rate : price
+
+      const holdingPeriodDays = (new Date(saleDate).getTime() - new Date(histPurchaseDate).getTime()) / (1000 * 60 * 60 * 24)
+      const heldOver12Months = holdingPeriodDays >= 365
+
+      const costBase = (units * purchasePriceAUD) + buyBrokerageAUD
+      const proceeds = (units * salePriceAUD) - totalSellFees
+      const grossGain = proceeds - costBase
+      const discountApplied = (heldOver12Months && grossGain > 0) ? grossGain * 0.5 : 0
+      const netGain = grossGain - discountApplied
+
+      const { error: insertErr } = await supabase.from('cgt_sales').insert({
+        user_id: user.id,
+        holding_id: null,
+        ticker: histTicker.toUpperCase(),
+        name: histName || histTicker.toUpperCase(),
+        units,
+        purchase_date: histPurchaseDate,
+        purchase_price: purchPrice,
+        sale_date: saleDate,
+        sale_price: price,
+        sale_price_aud: salePriceAUD,
+        purchase_price_aud: purchasePriceAUD,
+        currency: tradeCurrency,
+        exchange_rate: rate,
+        cost_base: costBase,
+        proceeds,
+        gross_gain: grossGain,
+        held_over_12_months: heldOver12Months,
+        discount_applied: discountApplied,
+        net_gain: netGain,
+        sell_brokerage: totalSellFees,
+        buy_brokerage: buyBrokerageAUD,
+      })
+
+      if (insertErr) { setError('Save failed: ' + insertErr.message); setSubmitting(false); return }
+
+      // Reset
+      setShowAddSale(false)
+      setHistoricalMode(false)
+      setHistTicker(''); setHistName(''); setHistPurchaseDate(''); setHistPurchasePrice('')
+      setSelectedHolding(''); setSaleUnits(''); setSalePrice('')
+      setBroker(''); setBuyBrokerage(''); setSellBrokerage(''); setRegulatoryFees('')
+      setConversionFees(''); setOtherFees(''); setMarketOverride('auto'); setPurchaseExchangeRate('')
+      setSubmitting(false)
+      loadData()
+    } catch (err: any) {
+      setError('Error: ' + (err.message || String(err)))
+      setSubmitting(false)
+    }
+  }
+
   const handleAddSale = async () => {
+    // Historical sale path — holding no longer exists, purchase details entered manually
+    if (historicalMode) {
+      return handleHistoricalSale()
+    }
+
     if (!selectedHolding || !saleUnits || !saleDate || !salePrice) {
       setError('Please fill in all fields')
       return
@@ -1164,29 +1262,97 @@ export default function CGTPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Stock</label>
-                <select
-                  value={selectedHolding}
-                  onChange={(e) => setSelectedHolding(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              {/* Historical sale toggle */}
+              <div className="flex items-center justify-between bg-slate-900/50 rounded-lg p-3 border border-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-gray-300">Historical Sale</p>
+                  <p className="text-[10px] text-gray-500">Enable for past sales where the holding no longer exists in your portfolio</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHistoricalMode(!historicalMode)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${historicalMode ? 'bg-emerald-500' : 'bg-gray-700'}`}
                 >
-                  <option value="">Select a holding...</option>
-                  {holdings
-                    .filter(h => h.lots && h.lots.length > 0)
-                    .map(h => {
-                      const totalUnits = h.lots.reduce((sum, l) => sum + l.units, 0)
-                      return (
-                        <option key={h.id} value={h.id}>
-                          {h.ticker} ({h.currency}) - {h.name} ({totalUnits.toLocaleString()} units)
-                        </option>
-                      )
-                    })}
-                </select>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${historicalMode ? 'translate-x-5' : ''}`} />
+                </button>
               </div>
 
+              {!historicalMode ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Stock</label>
+                  <select
+                    value={selectedHolding}
+                    onChange={(e) => setSelectedHolding(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Select a holding...</option>
+                    {holdings
+                      .filter(h => h.lots && h.lots.length > 0)
+                      .map(h => {
+                        const totalUnits = h.lots.reduce((sum, l) => sum + l.units, 0)
+                        return (
+                          <option key={h.id} value={h.id}>
+                            {h.ticker} ({h.currency}) - {h.name} ({totalUnits.toLocaleString()} units)
+                          </option>
+                        )
+                      })}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Ticker</label>
+                      <input
+                        type="text"
+                        value={histTicker}
+                        onChange={(e) => setHistTicker(e.target.value.toUpperCase())}
+                        placeholder="e.g. NVDA"
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Name (optional)</label>
+                      <input
+                        type="text"
+                        value={histName}
+                        onChange={(e) => setHistName(e.target.value)}
+                        placeholder="e.g. NVIDIA Corp"
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Purchase Date</label>
+                      <input
+                        type="date"
+                        value={histPurchaseDate}
+                        onChange={(e) => setHistPurchaseDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Purchase Price ({effectiveCurrency})
+                      </label>
+                      <input
+                        type="number"
+                        value={histPurchasePrice}
+                        onChange={(e) => setHistPurchasePrice(e.target.value)}
+                        placeholder="0.00"
+                        step="0.01"
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Units to Sell (FIFO)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  {historicalMode ? 'Units Sold' : 'Units to Sell (FIFO)'}
+                </label>
                 <input
                   type="number"
                   value={saleUnits}
@@ -1229,7 +1395,7 @@ export default function CGTPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-1">Market</label>
                 <div className="flex items-center bg-black/30 rounded-lg p-0.5 border border-gray-800">
                   {[
-                    { val: 'auto', label: selectedHoldingData ? `Auto (${selectedHoldingData.currency})` : 'Auto' },
+                    { val: 'auto', label: historicalMode ? 'Auto (AUD)' : (selectedHoldingData ? `Auto (${selectedHoldingData.currency})` : 'Auto') },
                     { val: 'ASX', label: 'ASX (AUD)' },
                     { val: 'US', label: 'US (USD)' },
                   ].map(opt => (
