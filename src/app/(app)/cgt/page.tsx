@@ -108,8 +108,8 @@ export default function CGTPage() {
   const [saleUnits, setSaleUnits] = useState<string>('')
   const [saleDate, setSaleDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [salePrice, setSalePrice] = useState<string>('')
-  const [exchangeRate, setExchangeRate] = useState<string>('1.55') // AUD/USD at SALE date
-  const [purchaseExchangeRate, setPurchaseExchangeRate] = useState<string>('') // AUD/USD at PURCHASE date (ATO monthly avg)
+  const [exchangeRate, setExchangeRate] = useState<string>('0.65') // ATO format: USD per A$1 (sale month)
+  const [purchaseExchangeRate, setPurchaseExchangeRate] = useState<string>('') // ATO format: USD per A$1 (purchase month)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -183,6 +183,13 @@ export default function CGTPage() {
     if (feesCurrency === 'AUD') return feeNative
     // fees entered in native currency
     return currency === 'USD' ? feeNative * rate : feeNative
+  }
+
+  // ATO publishes rates as foreign currency per A$1 (e.g. USD 0.6544 = A$1).
+  // Our math needs AUD per 1 USD, so invert: 1 / 0.6544 = 1.528.
+  const atoToAudPerUsd = (atoRate: number): number => {
+    if (!atoRate || atoRate <= 0) return 1
+    return 1 / atoRate
   }
 
   const loadData = useCallback(async () => {
@@ -405,8 +412,9 @@ export default function CGTPage() {
       const units = parseFloat(saleUnits)
       const price = parseFloat(salePrice)
       const purchPrice = parseFloat(histPurchasePrice)
-      const rate = parseFloat(exchangeRate) || 1
-      const buyRate = parseFloat(purchaseExchangeRate) || rate
+      // Inputs are in ATO format (USD per A$1); invert to AUD per USD
+      const rate = atoToAudPerUsd(parseFloat(exchangeRate))
+      const buyRate = purchaseExchangeRate ? atoToAudPerUsd(parseFloat(purchaseExchangeRate)) : rate
 
       const tradeCurrency =
         marketOverride === 'US' ? 'USD'
@@ -494,9 +502,9 @@ export default function CGTPage() {
 
     const units = parseFloat(saleUnits)
     const price = parseFloat(salePrice)
-    const rate = parseFloat(exchangeRate) || 1  // sale-date rate
-    // Purchase-date rate: use entered value, else fall back to sale rate for backward compat
-    const buyRate = parseFloat(purchaseExchangeRate) || rate
+    // Inputs are in ATO format (USD per A$1); invert to AUD per USD for the math
+    const rate = atoToAudPerUsd(parseFloat(exchangeRate))  // sale-date rate
+    const buyRate = purchaseExchangeRate ? atoToAudPerUsd(parseFloat(purchaseExchangeRate)) : rate
 
     // FIFO lot selection
     const sortedLots = [...holding.lots].sort(
@@ -693,7 +701,7 @@ export default function CGTPage() {
   const isUSTrade = effectiveCurrency === 'USD'
   const previewUnits = parseFloat(saleUnits) || 0
   const previewPrice = parseFloat(salePrice) || 0
-  const previewRate = parseFloat(exchangeRate) || 1
+  const previewRate = atoToAudPerUsd(parseFloat(exchangeRate))
   const previewCurrency = effectiveCurrency
   const previewGrossProceeds = previewUnits * previewPrice
   // All fees manual; convert to AUD for preview using the same feeToAUD logic
@@ -1420,36 +1428,43 @@ export default function CGTPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Purchase FX Rate (AUD per USD)
+                      Purchase FX Rate (USD per A$1 — ATO)
                     </label>
                     <input
                       type="number"
                       value={purchaseExchangeRate}
                       onChange={(e) => setPurchaseExchangeRate(e.target.value)}
-                      placeholder="e.g. 1.528"
-                      step="0.001"
+                      placeholder="e.g. 0.6544"
+                      step="0.0001"
                       className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      ATO monthly avg for the BUY month. Leave blank to use sale rate.
+                      Enter the ATO monthly rate for the BUY month exactly as published. Leave blank to use sale rate.
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Sale FX Rate (AUD per USD)
+                      Sale FX Rate (USD per A$1 — ATO)
                     </label>
                     <input
                       type="number"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(e.target.value)}
-                      placeholder="e.g. 1.424"
-                      step="0.001"
+                      placeholder="e.g. 0.7024"
+                      step="0.0001"
                       className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      ATO monthly avg for the SELL month. Note: ATO quotes USD per A$1 — invert it (1 ÷ 0.7024 = 1.424).
+                      Enter the ATO monthly rate for the SELL month exactly as published on the ATO site. No conversion needed.
                     </p>
                   </div>
+                  {(exchangeRate || purchaseExchangeRate) && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 text-[11px] text-blue-300">
+                      Internal conversion: 
+                      {purchaseExchangeRate && ` buy A$1 = US$${parseFloat(purchaseExchangeRate).toFixed(4)} → A$${atoToAudPerUsd(parseFloat(purchaseExchangeRate)).toFixed(4)} per US$1;`}
+                      {exchangeRate && ` sell A$1 = US$${parseFloat(exchangeRate).toFixed(4)} → A$${atoToAudPerUsd(parseFloat(exchangeRate)).toFixed(4)} per US$1`}
+                    </div>
+                  )}
                 </div>
               )}
 
