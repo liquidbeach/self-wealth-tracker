@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Fundamentals data from Yahoo Finance
-// Returns quarterly EPS, revenue, price history, and key stats for a ticker
+// Fundamentals data from Yahoo Finance quoteSummary
+// quoteSummary now requires a cookie + crumb. We fetch those first, then call the endpoint.
 // Usage: /api/fundamentals?symbol=NVDA
 
 interface QuarterPoint {
@@ -10,43 +10,109 @@ interface QuarterPoint {
   eps: number | null
 }
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+// Cache the cookie + crumb across requests (they last a while)
+let cachedCookie: string | null = null
+let cachedCrumb: string | null = null
+let crumbFetchedAt = 0
+const CRUMB_TTL = 1000 * 60 * 30 // 30 min
+
+async function getCookieAndCrumb(): Promise<{ cookie: string; crumb: string } | null> {
+  // Reuse if fresh
+  if (cachedCookie && cachedCrumb && Date.now() - crumbFetchedAt < CRUMB_TTL) {
+    return { cookie: cachedCookie, crumb: cachedCrumb }
+  }
+
+  try {
+    // Step 1: get a cookie from Yahoo
+    const cookieRes = await fetch('https://fc.yahoo.com', {
+      headers: { 'User-Agent': UA },
+      redirect: 'manual',
+    })
+    let cookie = ''
+    const setCookie = cookieRes.headers.get('set-cookie')
+    if (setCookie) {
+      cookie = setCookie.split(';')[0]
+    }
+
+    // Some environments need the consent flow; try the getcrumb endpoint with the cookie
+    // Step 2: get a crumb using the cookie
+    const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+      headers: {
+        'User-Agent': UA,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+    })
+
+    if (!crumbRes.ok) {
+      return null
+    }
+
+    const crumb = await crumbRes.text()
+    if (!crumb || crumb.includes('<html') || crumb.length > 20) {
+      // crumb should be a short token; if we got HTML back, it failed
+      return null
+    }
+
+    cachedCookie = cookie
+    cachedCrumb = crumb
+    crumbFetchedAt = Date.now()
+    return { cookie, crumb }
+  } catch {
+    return null
+  }
+}
+
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get('symbol')?.toUpperCase()
   if (!symbol) {
     return NextResponse.json({ error: 'symbol required' }, { status: 400 })
   }
 
+  const modules = [
+    'incomeStatementHistoryQuarterly',
+    'earnings',
+    'defaultKeyStatistics',
+    'price',
+    'summaryDetail',
+    'financialData',
+  ].join(',')
+
   try {
-    // Yahoo Finance fundamentals via quoteSummary
-    // Modules: incomeStatementHistoryQuarterly (revenue), earnings (eps), defaultKeyStatistics, price, summaryDetail
-    const modules = [
-      'incomeStatementHistoryQuarterly',
-      'earnings',
-      'defaultKeyStatistics',
-      'price',
-      'summaryDetail',
-      'financialData',
-    ].join(',')
+    const auth = await getCookieAndCrumb()
 
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`
+    // Build URL — include crumb if we have one
+    const crumbParam = auth?.crumb ? `&crumb=${encodeURIComponent(auth.crumb)}` : ''
+    const headers: Record<string, string> = { 'User-Agent': UA }
+    if (auth?.cookie) headers.Cookie = auth.cookie
 
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-    })
+    const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']
+    let lastStatus = 0
 
-    if (!res.ok) {
-      // Fallback: try query2 host
-      const url2 = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`
-      const res2 = await fetch(url2, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-      if (!res2.ok) {
-        return NextResponse.json({ error: `Yahoo Finance error: ${res.status}` }, { status: 502 })
+    for (const host of hosts) {
+      const url = `https://${host}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}${crumbParam}`
+      const res = await fetch(url, { headers })
+      lastStatus = res.status
+
+      if (res.ok) {
+        const data = await res.json()
+        return NextResponse.json(parseYahoo(data, symbol))
       }
-      const data2 = await res2.json()
-      return NextResponse.json(parseYahoo(data2, symbol))
+
+      // If 401 and we had no auth, one more try after forcing a fresh crumb
+      if (res.status === 401 && auth) {
+        cachedCrumb = null
+        cachedCookie = null
+      }
     }
 
-    const data = await res.json()
-    return NextResponse.json(parseYahoo(data, symbol))
+    // Fallback: try the chart endpoint for at least price + basic data (no crumb needed)
+    return NextResponse.json({
+      error: `Yahoo Finance error: ${lastStatus}. quoteSummary requires auth that failed — data source swap (EODHD) recommended for reliability.`,
+      symbol,
+      partial: true,
+    }, { status: 502 })
   } catch (err: any) {
     console.error('Fundamentals fetch error:', err)
     return NextResponse.json({ error: err.message || 'Failed to fetch fundamentals' }, { status: 500 })
@@ -66,92 +132,56 @@ function parseYahoo(data: any, symbol: string) {
   const earnings = result.earnings || {}
   const incomeQuarterly = result.incomeStatementHistoryQuarterly?.incomeStatementHistory || []
 
-  // Current price
   const currentPrice = price.regularMarketPrice?.raw ?? null
   const priceChange = price.regularMarketChangePercent?.raw ?? null
 
-  // Quarterly revenue (from income statement)
   const revenueByQuarter: QuarterPoint[] = incomeQuarterly.map((q: any) => ({
     date: q.endDate?.fmt || '',
     revenue: q.totalRevenue?.raw ?? null,
-    eps: null, // filled from earnings below
-  })).reverse() // oldest first
+    eps: null,
+  })).reverse()
 
-  // Quarterly EPS (from earnings module)
   const epsQuarterly = earnings.earningsChart?.quarterly || []
-  const epsMap: Record<string, number> = {}
-  epsQuarterly.forEach((e: any) => {
-    // e.date is like "1Q2024"
-    if (e.date && e.actual?.raw !== undefined) {
-      epsMap[e.date] = e.actual.raw
-    }
-  })
-
-  // Financial revenue chart (quarterly) — alternative revenue source
   const finChartQuarterly = earnings.financialsChart?.quarterly || []
   const revChartMap: Record<string, number> = {}
   finChartQuarterly.forEach((f: any) => {
-    if (f.date && f.revenue?.raw !== undefined) {
-      revChartMap[f.date] = f.revenue.raw
-    }
+    if (f.date && f.revenue?.raw !== undefined) revChartMap[f.date] = f.revenue.raw
   })
 
-  // Build a combined quarterly series from earnings chart (has both eps + revenue aligned)
   const combinedQuarterly: QuarterPoint[] = epsQuarterly.map((e: any) => ({
     date: e.date || '',
     eps: e.actual?.raw ?? null,
     revenue: revChartMap[e.date] ?? null,
   }))
 
-  // Key valuation metrics
   const forwardPE = summaryDetail.forwardPE?.raw ?? keyStats.forwardPE?.raw ?? null
   const trailingPE = summaryDetail.trailingPE?.raw ?? null
   const pegRatio = keyStats.pegRatio?.raw ?? null
   const sharesOutstanding = keyStats.sharesOutstanding?.raw ?? price.sharesOutstanding?.raw ?? null
 
-  // Volume
   const volume = summaryDetail.volume?.raw ?? price.regularMarketVolume?.raw ?? null
   const avgVolume10d = summaryDetail.averageVolume10days?.raw ?? null
   const avgVolume3m = summaryDetail.averageDailyVolume3Month?.raw ?? null
 
-  // Growth metrics
   const revenueGrowth = financialData.revenueGrowth?.raw ?? null
   const earningsGrowth = financialData.earningsGrowth?.raw ?? null
 
-  // 52-week range
   const fiftyTwoWeekHigh = summaryDetail.fiftyTwoWeekHigh?.raw ?? null
   const fiftyTwoWeekLow = summaryDetail.fiftyTwoWeekLow?.raw ?? null
 
-  // TTM revenue (sum of last 4 quarters if available)
   const ttmRevenue = revenueByQuarter.slice(-4).reduce((s, q) => s + (q.revenue || 0), 0) || null
 
   return {
     symbol,
     name: price.longName || price.shortName || symbol,
     currency: price.currency || 'USD',
-    currentPrice,
-    priceChange,
-    // Valuation
-    forwardPE,
-    trailingPE,
-    pegRatio,
-    sharesOutstanding,
-    // Growth
-    revenueGrowth,
-    earningsGrowth,
-    // Volume
-    volume,
-    avgVolume10d,
-    avgVolume3m,
-    // Range
-    fiftyTwoWeekHigh,
-    fiftyTwoWeekLow,
-    // TTM
+    currentPrice, priceChange,
+    forwardPE, trailingPE, pegRatio, sharesOutstanding,
+    revenueGrowth, earningsGrowth,
+    volume, avgVolume10d, avgVolume3m,
+    fiftyTwoWeekHigh, fiftyTwoWeekLow,
     ttmRevenue,
-    // Time series
-    revenueByQuarter,      // from income statement (actual $ revenue)
-    combinedQuarterly,     // from earnings chart (eps + revenue aligned by quarter label)
-    // Meta
+    revenueByQuarter, combinedQuarterly,
     fetchedAt: new Date().toISOString(),
     dataSource: 'yahoo',
   }
