@@ -25,6 +25,9 @@ import {
   Target,
   Activity,
   Radar,
+  Home, 
+  Receipt,
+  Gauge,
 } from 'lucide-react'
 
 import { useState, useEffect } from 'react'
@@ -41,6 +44,7 @@ const navigation = [
   { name: 'Watchlist', href: '/watchlist', icon: Eye },
   { name: 'AI Universe', href: '/universe', icon: Globe },
   { name: 'Signal Monitor', href: '/signal-monitor', icon: Radar },
+  { name: 'Fundamentals Scanner', href: '/fundamentals', icon: Gauge },
   { name: 'Search', href: '/search', icon: Search },
   { name: 'Momentum', href: '/momentum', icon: TrendingUp },
   
@@ -115,7 +119,7 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-blue-500/100/15 text-blue-400'
+                  ? 'bg-blue-500/15 text-blue-400'
                   : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -158,7 +162,7 @@ export default function Sidebar() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/100/10"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10"
                 >
                   <LogOut className="w-4 h-4" />
                   Sign Out
