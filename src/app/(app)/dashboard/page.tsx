@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
+import PillarPanel from '@/components/PillarPanel'
 
 interface DashboardStats {
   totalCost: number
@@ -267,6 +268,7 @@ export default function DashboardPage() {
           <p className="text-xl sm:text-2xl font-bold text-white">${stats.totalValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
           <p className="text-xs text-gray-400 mt-0.5">Cost: ${stats.totalCost.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
         </div>
+        <PillarPanel />
 
         {/* Gain/Loss - Dark Slate with colored text */}
         <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
