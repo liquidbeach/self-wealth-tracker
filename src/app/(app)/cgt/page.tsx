@@ -71,10 +71,14 @@ interface Holding {
 }
 
 interface TaxSummary {
-  totalGrossGains: number
+  // Split pools (ATO-correct netting requires these separate)
+  shortTermGains: number   // gains on parcels held < 12 months (no discount)
+  longTermGains: number    // gains on parcels held >= 12 months (pre-discount, gross)
+  totalGrossGains: number  // shortTermGains + longTermGains (for display continuity)
+  totalLosses: number      // absolute value of all parcel losses this FY
+  // Kept for display/back-compat — the discount ACTUALLY applied after loss-netting
   totalDiscounts: number
   totalNetGains: number
-  totalLosses: number
   netCapitalGain: number
 }
 
@@ -91,6 +95,13 @@ interface FYSummaryRecord {
   losses_applied: number
   closing_carried_losses: number
   net_taxable_gain: number
+  // Netting-order transparency (ATO sequence: losses -> ST first, then LT, then discount)
+  short_term_gains?: number
+  long_term_gains?: number
+  losses_vs_short?: number      // losses applied against short-term gains
+  losses_vs_long?: number       // losses applied against long-term gains
+  long_term_after_losses?: number
+  discount_on_survivor?: number // 50% discount on LT gain that survived losses
   is_finalized: boolean
   finalized_at?: string
 }
@@ -246,70 +257,109 @@ export default function CGTPage() {
         return saleDate >= fyStart && saleDate <= fyEnd
       })
     }
-    
-    let totalGrossGains = 0
-    let totalDiscounts = 0
+
+    // Split gains into two pools by holding period. Losses are pooled separately.
+    // (The 50% discount is NOT applied here — it is applied later, only to the
+    //  long-term gain that survives loss-netting, per ATO ordering.)
+    let shortTermGains = 0
+    let longTermGains = 0
     let totalLosses = 0
-    
+
     filtered.forEach(lot => {
       if (lot.gross_gain >= 0) {
-        totalGrossGains += lot.gross_gain
-        if (lot.discount_applied) {
-          totalDiscounts += lot.gross_gain * 0.5
+        if (lot.held_over_12_months) {
+          longTermGains += lot.gross_gain
+        } else {
+          shortTermGains += lot.gross_gain
         }
       } else {
         totalLosses += Math.abs(lot.gross_gain)
       }
     })
-    
+
+    const totalGrossGains = shortTermGains + longTermGains
+
+    // For display continuity only: the "notional" full discount if no losses applied.
+    // The ACTUAL discount after netting is computed in calculateFYWithCarryForward.
+    const totalDiscounts = longTermGains * 0.5
     const totalNetGains = totalGrossGains - totalDiscounts
     const netCapitalGain = Math.max(0, totalNetGains - totalLosses)
-    
+
     return {
+      shortTermGains,
+      longTermGains,
       totalGrossGains,
+      totalLosses,
       totalDiscounts,
       totalNetGains,
-      totalLosses,
       netCapitalGain,
     }
   }
 
-  // Calculate complete FY summary with carry forward
+  // Calculate complete FY summary with carry forward — ATO netting order:
+  //   1. Losses offset SHORT-TERM gains first (they're taxed at full rate = most valuable)
+  //   2. Remaining losses offset LONG-TERM gains (still pre-discount)
+  //   3. Apply 50% discount to the LONG-TERM gain that SURVIVES losses
+  //   4. Any leftover losses carry forward
   const calculateFYWithCarryForward = (fy: string): FYSummaryRecord => {
     const salesSummary = calculateTaxSummary(soldLots, fy)
-    
-    // Get prior FY's closing losses (our opening losses)
+
+    // Prior FY closing losses (our opening losses)
     const [startYear] = fy.split('-').map(Number)
     const priorFY = `${startYear - 1}-${startYear}`
     const priorFYRecord = fySummaries.find(s => s.financial_year === priorFY)
     const openingLosses = priorFYRecord?.closing_carried_losses || 0
-    
-    // Get manual adjustment for this FY
+
+    // Manual adjustment for this FY
     const thisFYRecord = fySummaries.find(s => s.financial_year === fy)
     const manualAdj = thisFYRecord?.manual_loss_adjustment || (fy === selectedFY ? parseFloat(manualLossAdjustment) || 0 : 0)
-    
-    // Total available losses
-    const totalAvailableLosses = openingLosses + manualAdj + salesSummary.totalLosses
-    
-    // Net gains after discount
-    const netGainsAfterDiscount = salesSummary.totalGrossGains - salesSummary.totalDiscounts
-    
-    // Apply losses (losses MUST offset gains first)
-    const lossesApplied = Math.min(totalAvailableLosses, netGainsAfterDiscount)
-    const netTaxableGain = Math.max(0, netGainsAfterDiscount - lossesApplied)
-    const closingLosses = Math.max(0, totalAvailableLosses - lossesApplied)
-    
+
+    // Total losses available to apply this FY
+    let availableLosses = openingLosses + manualAdj + salesSummary.totalLosses
+
+    const shortTermGains = salesSummary.shortTermGains
+    const longTermGains = salesSummary.longTermGains
+
+    // Step 1: losses against short-term gains first
+    const lossesVsShort = Math.min(availableLosses, shortTermGains)
+    const shortAfterLosses = shortTermGains - lossesVsShort
+    availableLosses -= lossesVsShort
+
+    // Step 2: remaining losses against long-term gains (pre-discount)
+    const lossesVsLong = Math.min(availableLosses, longTermGains)
+    const longAfterLosses = longTermGains - lossesVsLong
+    availableLosses -= lossesVsLong
+
+    // Step 3: 50% discount on surviving long-term gain
+    const discountOnSurvivor = longAfterLosses * 0.5
+    const longTaxable = longAfterLosses - discountOnSurvivor
+
+    // Net taxable gain = surviving short-term + discounted surviving long-term
+    const netTaxableGain = Math.max(0, shortAfterLosses + longTaxable)
+
+    // Step 4: leftover losses carry forward
+    const closingLosses = Math.max(0, availableLosses)
+
+    const totalLossesApplied = lossesVsShort + lossesVsLong
+
     return {
       financial_year: fy,
       opening_carried_losses: openingLosses,
       manual_loss_adjustment: manualAdj,
       manual_adjustment_note: thisFYRecord?.manual_adjustment_note || manualAdjustmentNote,
       total_gross_gains: salesSummary.totalGrossGains,
-      total_discounts: salesSummary.totalDiscounts,
+      total_discounts: discountOnSurvivor, // ACTUAL discount applied (post-netting)
       total_losses: salesSummary.totalLosses,
-      losses_applied: lossesApplied,
+      losses_applied: totalLossesApplied,
       closing_carried_losses: closingLosses,
       net_taxable_gain: netTaxableGain,
+      // Transparency fields
+      short_term_gains: shortTermGains,
+      long_term_gains: longTermGains,
+      losses_vs_short: lossesVsShort,
+      losses_vs_long: lossesVsLong,
+      long_term_after_losses: longAfterLosses,
+      discount_on_survivor: discountOnSurvivor,
       is_finalized: thisFYRecord?.is_finalized || false,
       finalized_at: thisFYRecord?.finalized_at,
     }
@@ -320,28 +370,29 @@ export default function CGTPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    
+
     const existingRecord = fySummaries.find(s => s.financial_year === fyRecord.financial_year)
-    
+
+    // Only persist columns that exist in cgt_fy_summary. The netting-transparency
+    // fields (short_term_gains, losses_vs_short, etc.) are recomputed on every load
+    // from raw cgt_sales, so they are intentionally NOT written to the DB.
+    const {
+      short_term_gains, long_term_gains, losses_vs_short, losses_vs_long,
+      long_term_after_losses, discount_on_survivor,
+      ...persistable
+    } = fyRecord
+
     if (existingRecord?.id) {
-      // Update existing
       await supabase
         .from('cgt_fy_summary')
-        .update({
-          ...fyRecord,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ...persistable, updated_at: new Date().toISOString() })
         .eq('id', existingRecord.id)
     } else {
-      // Insert new
       await supabase
         .from('cgt_fy_summary')
-        .insert({
-          ...fyRecord,
-          user_id: user.id,
-        })
+        .insert({ ...persistable, user_id: user.id })
     }
-    
+
     loadData()
   }
 
@@ -789,30 +840,77 @@ export default function CGTPage() {
         {/* Main Summary Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div>
-            <p className="text-xs text-gray-500">Gross Gains</p>
+            <p className="text-xs text-gray-500">Short-term Gains</p>
             <p className="text-xl sm:text-2xl font-bold text-emerald-400">
-              {formatCurrency(computedFYSummary.total_gross_gains)}
+              {formatCurrency(computedFYSummary.short_term_gains || 0)}
             </p>
+            <p className="text-[10px] text-gray-600">Held &lt; 12mo · full rate</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">50% Discount</p>
-            <p className="text-xl sm:text-2xl font-bold text-cyan-400">
-              -{formatCurrency(computedFYSummary.total_discounts)}
+            <p className="text-xs text-gray-500">Long-term Gains</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-400">
+              {formatCurrency(computedFYSummary.long_term_gains || 0)}
             </p>
+            <p className="text-[10px] text-gray-600">Held &ge; 12mo · pre-discount</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Losses Applied</p>
             <p className="text-xl sm:text-2xl font-bold text-orange-400">
               -{formatCurrency(computedFYSummary.losses_applied)}
             </p>
+            <p className="text-[10px] text-gray-600">ST first, then LT</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Net Taxable</p>
             <p className={`text-xl sm:text-2xl font-bold ${computedFYSummary.net_taxable_gain >= 0 ? 'text-white' : 'text-orange-400'}`}>
               {formatCurrency(computedFYSummary.net_taxable_gain)}
             </p>
+            <p className="text-[10px] text-gray-600">After 50% discount</p>
           </div>
         </div>
+
+        {/* Netting sequence — the ATO order, shown plainly */}
+        {(computedFYSummary.total_gross_gains > 0 || computedFYSummary.losses_applied > 0) && (
+          <div className="mt-4 bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+            <p className="text-[11px] font-medium text-gray-400 mb-2">Netting sequence (ATO order)</p>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Short-term gains</span>
+                <span className="font-mono">{formatCurrency(computedFYSummary.short_term_gains || 0)}</span>
+              </div>
+              {(computedFYSummary.losses_vs_short || 0) > 0 && (
+                <div className="flex justify-between text-orange-400/80 pl-3">
+                  <span>less losses (against ST first)</span>
+                  <span className="font-mono">-{formatCurrency(computedFYSummary.losses_vs_short || 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-700/50">
+                <span>Long-term gains (gross)</span>
+                <span className="font-mono">{formatCurrency(computedFYSummary.long_term_gains || 0)}</span>
+              </div>
+              {(computedFYSummary.losses_vs_long || 0) > 0 && (
+                <div className="flex justify-between text-orange-400/80 pl-3">
+                  <span>less remaining losses</span>
+                  <span className="font-mono">-{formatCurrency(computedFYSummary.losses_vs_long || 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-cyan-400/80 pl-3">
+                <span>less 50% discount (on survivor)</span>
+                <span className="font-mono">-{formatCurrency(computedFYSummary.discount_on_survivor || 0)}</span>
+              </div>
+              <div className="flex justify-between text-white font-medium pt-1.5 border-t border-slate-600">
+                <span>Net taxable gain</span>
+                <span className="font-mono">{formatCurrency(computedFYSummary.net_taxable_gain)}</span>
+              </div>
+              {computedFYSummary.closing_carried_losses > 0 && (
+                <div className="flex justify-between text-cyan-400 pt-1">
+                  <span>Losses carried to next FY</span>
+                  <span className="font-mono">{formatCurrency(computedFYSummary.closing_carried_losses)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Carry Forward Details */}
         {showCarryForward && (
@@ -858,21 +956,15 @@ export default function CGTPage() {
               {/* Right: Application & Carry Forward */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-300">
-                  <span>Gains After Discount:</span>
+                  <span>Net taxable (after netting + discount):</span>
                   <span className="font-medium text-emerald-400">
-                    {formatCurrency(computedFYSummary.total_gross_gains - computedFYSummary.total_discounts)}
+                    {formatCurrency(computedFYSummary.net_taxable_gain)}
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-300">
                   <span>Losses Used:</span>
                   <span className="font-medium text-orange-400">
                     -{formatCurrency(computedFYSummary.losses_applied)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-200 pt-2 border-t border-slate-600">
-                  <span className="font-medium">Net Taxable:</span>
-                  <span className="font-bold text-white">
-                    {formatCurrency(computedFYSummary.net_taxable_gain)}
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-200 bg-slate-700 -mx-2 px-2 py-2 rounded mt-2">
