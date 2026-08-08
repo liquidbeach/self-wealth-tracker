@@ -314,3 +314,14 @@ select:not([class*="text-"]),
 textarea:not([class*="text-"]) {
   color: #ffffff;
 }
+/* Safety net: any input/textarea not using .input still gets readable text
+   on the dark theme. Explicit classes (.input, Tailwind text-*) override this. */
+input:not([type="checkbox"]):not([type="radio"]):not(.input),
+textarea:not(.input) {
+  color: #ffffff;
+  background-color: var(--bg-input);
+}
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280;
+}
