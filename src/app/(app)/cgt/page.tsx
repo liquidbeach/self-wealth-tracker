@@ -142,6 +142,16 @@ export default function CGTPage() {
   const [histName, setHistName] = useState('')
   const [histPurchaseDate, setHistPurchaseDate] = useState('')
   const [histPurchasePrice, setHistPurchasePrice] = useState('')
+
+  // Multi-tranche mode — one sale line, many buy parcels (each its own CGT event)
+  const [multiTranche, setMultiTranche] = useState(false)
+  interface TrancheInput {
+    units: string; purchaseDate: string; purchasePrice: string
+    buyFxRate: string; buyBrokerage: string
+  }
+  const [tranches, setTranches] = useState<TrancheInput[]>([
+    { units: '', purchaseDate: '', purchasePrice: '', buyFxRate: '', buyBrokerage: '' },
+  ])
   
   // Tax Estimator State
   const [baseSalary, setBaseSalary] = useState<string>('')
@@ -447,6 +457,118 @@ export default function CGTPage() {
     return 45
   }
 
+  const addTranche = () => setTranches([...tranches, { units: '', purchaseDate: '', purchasePrice: '', buyFxRate: '', buyBrokerage: '' }])
+  const removeTranche = (i: number) => setTranches(tranches.filter((_, idx) => idx !== i))
+  const updateTranche = (i: number, field: keyof TrancheInput, val: string) => {
+    const next = [...tranches]; next[i] = { ...next[i], [field]: val }; setTranches(next)
+  }
+
+  const handleMultiTrancheSale = async () => {
+    // Validate sale-level fields
+    if (!histTicker || !saleDate || !salePrice) {
+      setError('Enter ticker, sale date and sale price')
+      return
+    }
+    const validTranches = tranches.filter(t => t.units && t.purchaseDate && t.purchasePrice)
+    if (validTranches.length === 0) {
+      setError('Add at least one complete tranche (units, purchase date, purchase price)')
+      return
+    }
+
+    const tradeCurrency =
+      marketOverride === 'US' ? 'USD'
+      : marketOverride === 'ASX' ? 'AUD'
+      : 'AUD'
+
+    // Sale-level conversions
+    const price = parseFloat(salePrice)
+    const saleRate = atoToAudPerUsd(parseFloat(exchangeRate))
+    const salePriceAUD = tradeCurrency === 'USD' ? price * saleRate : price
+
+    // Total sell-side fees (sell brokerage + reg + conversion + other), in AUD,
+    // allocated across tranches by unit share.
+    const sellBrokerageAUD = feeToAUD(parseFloat(sellBrokerage) || 0, tradeCurrency, saleRate)
+    const regFeesAUD = feeToAUD(parseFloat(regulatoryFees) || 0, tradeCurrency, saleRate)
+    const conversionFeesAUD = feeToAUD(parseFloat(conversionFees) || 0, tradeCurrency, saleRate)
+    const otherFeesAUD = feeToAUD(parseFloat(otherFees) || 0, tradeCurrency, saleRate)
+    const totalSellFees = sellBrokerageAUD + regFeesAUD + conversionFeesAUD + otherFeesAUD
+
+    const totalUnits = validTranches.reduce((s, t) => s + parseFloat(t.units), 0)
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setError('Not authenticated'); setSubmitting(false); return }
+
+      const rows = validTranches.map(t => {
+        const tUnits = parseFloat(t.units)
+        const tPrice = parseFloat(t.purchasePrice)
+        // Per-tranche buy FX; fall back to sale rate only if left blank
+        const tBuyRate = t.buyFxRate ? atoToAudPerUsd(parseFloat(t.buyFxRate)) : saleRate
+        const tBuyBrokerageAUD = feeToAUD(parseFloat(t.buyBrokerage) || 0, tradeCurrency, tBuyRate)
+
+        const purchasePriceAUD = tradeCurrency === 'USD' ? tPrice * tBuyRate : tPrice
+
+        // Allocate sell fees to this tranche by unit share
+        const sellFeeShare = totalUnits > 0 ? totalSellFees * (tUnits / totalUnits) : 0
+
+        const heldDays = (new Date(saleDate).getTime() - new Date(t.purchaseDate).getTime()) / (1000 * 60 * 60 * 24)
+        const heldOver12Months = heldDays >= 365
+
+        const costBase = (tUnits * purchasePriceAUD) + tBuyBrokerageAUD
+        const proceeds = (tUnits * salePriceAUD) - sellFeeShare
+        const grossGain = proceeds - costBase
+        const discountApplied = (heldOver12Months && grossGain > 0) ? grossGain * 0.5 : 0
+        const netGain = grossGain - discountApplied
+
+        return {
+          user_id: user.id,
+          holding_id: null,
+          ticker: histTicker.toUpperCase(),
+          name: histName || histTicker.toUpperCase(),
+          units: tUnits,
+          purchase_date: t.purchaseDate,
+          purchase_price: tPrice,
+          sale_date: saleDate,
+          sale_price: price,
+          sale_price_aud: salePriceAUD,
+          purchase_price_aud: purchasePriceAUD,
+          currency: tradeCurrency,
+          exchange_rate: saleRate,
+          cost_base: costBase,
+          proceeds,
+          gross_gain: grossGain,
+          held_over_12_months: heldOver12Months,
+          discount_applied: discountApplied,
+          net_gain: netGain,
+          sell_brokerage: sellFeeShare,
+          buy_brokerage: tBuyBrokerageAUD,
+        }
+      })
+
+      const { error: insertErr } = await supabase.from('cgt_sales').insert(rows)
+      if (insertErr) { setError('Save failed: ' + insertErr.message); setSubmitting(false); return }
+
+      // Reset
+      setShowAddSale(false)
+      setMultiTranche(false)
+      setHistoricalMode(false)
+      setHistTicker(''); setHistName('')
+      setTranches([{ units: '', purchaseDate: '', purchasePrice: '', buyFxRate: '', buyBrokerage: '' }])
+      setSelectedHolding(''); setSaleUnits(''); setSalePrice('')
+      setBroker(''); setBuyBrokerage(''); setSellBrokerage(''); setRegulatoryFees('')
+      setConversionFees(''); setOtherFees(''); setMarketOverride('auto'); setPurchaseExchangeRate('')
+      setSubmitting(false)
+      loadData()
+    } catch (err: any) {
+      setError('Error: ' + (err.message || String(err)))
+      setSubmitting(false)
+    }
+  }
+
   const handleHistoricalSale = async () => {
     if (!histTicker || !saleUnits || !saleDate || !salePrice || !histPurchaseDate || !histPurchasePrice) {
       setError('Please fill in all fields (ticker, purchase date/price, sale date/price, units)')
@@ -535,6 +657,10 @@ export default function CGTPage() {
   }
 
   const handleAddSale = async () => {
+    // Multi-tranche path — one sale, many buy parcels
+    if (multiTranche) {
+      return handleMultiTrancheSale()
+    }
     // Historical sale path — holding no longer exists, purchase details entered manually
     if (historicalMode) {
       return handleHistoricalSale()
@@ -1362,7 +1488,37 @@ export default function CGTPage() {
                 </div>
               )}
 
+              {/* ATO FX rates quick link */}
+              <a
+                href="https://www.ato.gov.au/tax-rates-and-codes/foreign-exchange-rates-overview"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between bg-blue-500/10 border border-blue-500/25 rounded-lg px-3 py-2 hover:bg-blue-500/15 transition-colors"
+              >
+                <span className="text-xs text-blue-300 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" />
+                  ATO monthly FX rates (USD per A$1) — enter these in the FX fields
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-blue-400" />
+              </a>
+
+              {/* Multi-tranche toggle — one sale, many buy parcels */}
+              <div className="flex items-center justify-between bg-slate-900/50 rounded-lg p-3 border border-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-gray-300">Multi-tranche Sale</p>
+                  <p className="text-[10px] text-gray-500">Sold one position bought across several dates? Enter each parcel — each gets its own 12-month test &amp; FX rate.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setMultiTranche(!multiTranche); if (!multiTranche) setHistoricalMode(false) }}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${multiTranche ? 'bg-cyan-500' : 'bg-gray-700'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${multiTranche ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
               {/* Historical sale toggle */}
+              {!multiTranche && (
               <div className="flex items-center justify-between bg-slate-900/50 rounded-lg p-3 border border-gray-800">
                 <div>
                   <p className="text-sm font-medium text-gray-300">Historical Sale</p>
@@ -1376,8 +1532,142 @@ export default function CGTPage() {
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${historicalMode ? 'translate-x-5' : ''}`} />
                 </button>
               </div>
+              )}
 
-              {!historicalMode ? (
+              {multiTranche && (
+                <div className="space-y-4">
+                  {/* Ticker + name */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Ticker</label>
+                      <input type="text" value={histTicker} onChange={(e) => setHistTicker(e.target.value.toUpperCase())}
+                        placeholder="e.g. MU"
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Name (optional)</label>
+                      <input type="text" value={histName} onChange={(e) => setHistName(e.target.value)}
+                        placeholder="e.g. Micron"
+                        className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    </div>
+                  </div>
+
+                  {/* Market */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Market</label>
+                    <div className="flex gap-2">
+                      {(['ASX', 'US'] as const).map(m => (
+                        <button key={m} type="button" onClick={() => setMarketOverride(m)}
+                          className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            marketOverride === m ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400' : 'border-gray-700 text-gray-400'
+                          }`}>
+                          {m === 'ASX' ? 'ASX (AUD)' : 'US (USD)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sale line — shared across all tranches */}
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 space-y-3">
+                    <p className="text-xs font-semibold text-emerald-400">SALE (applies to all parcels)</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-gray-400 mb-1">Sale Date</label>
+                        <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)}
+                          className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-gray-400 mb-1">Sale Price/unit ({marketOverride === 'US' ? 'USD' : 'AUD'})</label>
+                        <input type="number" value={salePrice} onChange={(e) => setSalePrice(e.target.value)}
+                          placeholder="0.00" step="0.0001"
+                          className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {marketOverride === 'US' && (
+                        <div>
+                          <label className="block text-[11px] text-gray-400 mb-1">Sale FX (USD per A$1 — ATO)</label>
+                          <input type="number" value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)}
+                            placeholder="e.g. 0.6560" step="0.0001"
+                            className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-[11px] text-gray-400 mb-1">Sell Brokerage/Fees ({marketOverride === 'US' ? 'USD' : 'AUD'})</label>
+                        <input type="number" value={sellBrokerage} onChange={(e) => setSellBrokerage(e.target.value)}
+                          placeholder="0.00" step="0.01"
+                          className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        <p className="text-[9px] text-gray-600 mt-0.5">Split across parcels by units</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tranches */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-300">BUY PARCELS ({tranches.length})</p>
+                      <button type="button" onClick={addTranche}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5" /> Add parcel
+                      </button>
+                    </div>
+
+                    {tranches.map((t, i) => (
+                      <div key={i} className="bg-slate-900/40 border border-gray-800 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-gray-500">Parcel {i + 1}</span>
+                          {tranches.length > 1 && (
+                            <button type="button" onClick={() => removeTranche(i)} className="text-gray-600 hover:text-red-400">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Units</label>
+                            <input type="number" value={t.units} onChange={(e) => updateTranche(i, 'units', e.target.value)}
+                              placeholder="0" step="any"
+                              className="w-full px-2 py-1.5 bg-white/5 text-white border border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Buy Date</label>
+                            <input type="date" value={t.purchaseDate} onChange={(e) => updateTranche(i, 'purchaseDate', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-white/5 text-white border border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Buy Price ({marketOverride === 'US' ? 'USD' : 'AUD'})</label>
+                            <input type="number" value={t.purchasePrice} onChange={(e) => updateTranche(i, 'purchasePrice', e.target.value)}
+                              placeholder="0.00" step="0.0001"
+                              className="w-full px-2 py-1.5 bg-white/5 text-white border border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {marketOverride === 'US' && (
+                            <div>
+                              <label className="block text-[10px] text-gray-500 mb-0.5">Buy FX (USD per A$1)</label>
+                              <input type="number" value={t.buyFxRate} onChange={(e) => updateTranche(i, 'buyFxRate', e.target.value)}
+                                placeholder="ATO rate for buy month" step="0.0001"
+                                className="w-full px-2 py-1.5 bg-white/5 text-white border border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Buy Brokerage ({marketOverride === 'US' ? 'USD' : 'AUD'})</label>
+                            <input type="number" value={t.buyBrokerage} onChange={(e) => updateTranche(i, 'buyBrokerage', e.target.value)}
+                              placeholder="0.00" step="0.01"
+                              className="w-full px-2 py-1.5 bg-white/5 text-white border border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] text-gray-500 italic">
+                    Each parcel is saved as its own CGT event with its own 12-month test. Sell fees are split across parcels by unit share.
+                  </p>
+                </div>
+              )}
+
+              {!multiTranche && !historicalMode ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Stock</label>
                   <select
@@ -1398,7 +1688,7 @@ export default function CGTPage() {
                       })}
                   </select>
                 </div>
-              ) : (
+              ) : !multiTranche ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -1447,8 +1737,9 @@ export default function CGTPage() {
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
+              {!multiTranche && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   {historicalMode ? 'Units Sold' : 'Units to Sell (FIFO)'}
@@ -1465,7 +1756,9 @@ export default function CGTPage() {
                   Lots will be selected in FIFO order (oldest first)
                 </p>
               </div>
+              )}
 
+              {!multiTranche && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Sale Date</label>
                 <input
@@ -1475,7 +1768,9 @@ export default function CGTPage() {
                   className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+              )}
 
+              {!multiTranche && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Sale Price per Unit ({effectiveCurrency})
@@ -1489,7 +1784,10 @@ export default function CGTPage() {
                   className="w-full px-3 py-2 bg-white/5 text-white border border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+              )}
 
+              {!multiTranche && (
+              <>
               {/* Market selector — drives currency, fees, conversion */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Market</label>
@@ -1654,6 +1952,8 @@ export default function CGTPage() {
                   </div>
                 )}
               </div>
+              </>
+              )}
 
               <button
                 onClick={handleAddSale}
